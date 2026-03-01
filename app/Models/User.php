@@ -30,6 +30,16 @@ class User extends Authenticatable
         'role_id'
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($user) {
+            if (!$user->role_id) {
+                $user->role_id = \App\Models\Role::where('name', 'client')->value('id');
+            }
+        });
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -52,19 +62,6 @@ class User extends Authenticatable
             'settings' => 'array',
             'birth_date' => 'date',
         ];
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($user) {
-            if (!$user->role_id) {
-                $clientRole = Role::where('name', 'client')->first();
-                if ($clientRole) {
-                    $user->role_id = $clientRole->id;
-                }
-            }
-        });
     }
 
     public function psychologistBooks()
