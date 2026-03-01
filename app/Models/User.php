@@ -27,7 +27,8 @@ class User extends Authenticatable
         'name',
         'birth_date',
         'bio',
-        'role_id'
+        'role_id',
+        'is_blocked'
     ];
 
     protected static function boot()
@@ -61,7 +62,13 @@ class User extends Authenticatable
             'password' => 'hashed',
             'settings' => 'array',
             'birth_date' => 'date',
+            'is_blocked' => 'boolean',
         ];
+    }
+
+    public function role()
+    {
+        return $this->belongsTo(Role::class, 'role_id');
     }
 
     public function psychologistBooks()

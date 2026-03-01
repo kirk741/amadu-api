@@ -21,6 +21,7 @@ return new class extends Migration
             $table->json('settings')->nullable();
             $table->timestamp('last_seen_at')->nullable();
             $table->foreignId('role_id')->constrained('roles')->cascadeOnDelete();
+            $table->boolean('is_blocked')->default(false);
             $table->rememberToken();
             $table->timestamps();
         });

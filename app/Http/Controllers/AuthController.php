@@ -31,6 +31,11 @@ class AuthController extends Controller
         }
 
         $user = Auth::user();
+        if ($user->is_blocked) {
+            Auth::logout();
+            return response()->json(['message' => 'Ваш аккаунт заблокирован'], 403);
+        }
+
         $token = $user->createToken("auth_token")->plainTextToken;
 
         return response()->json([
