@@ -51,7 +51,9 @@ class UserController extends Controller
         );
 
         if ($request->hasFile('avatar')) {
-            $user->media()->delete();
+            if ($user->media()) {
+                $user->media()->delete();
+            }
             $file = $request->file('avatar');
             $path = $file->store('avatars', 'public');
 
@@ -88,12 +90,17 @@ class UserController extends Controller
         $this->authorize('viewAny', User::class);
 
         $currentUser = $request->user();
-        $currentUser->loadMissing('role');
         $query = User::query()->with(['media', 'role']);
 
-        if ($currentUser->role->name === 'psychologist') {
-            $query->whereHas('role', fn($q) => $q->where('name', 'client'));
-        } elseif ($currentUser->role->name === 'client' || $currentUser === null) {
+        if ($currentUser) {
+            $currentUser->loadMissing('role');
+
+            if ($currentUser->role?->name === 'psychologist') {
+                $query->whereHas('role', fn($q) => $q->where('name', 'client'));
+            } elseif ($currentUser->role?->name === 'client') {
+                $query->whereHas('role', fn($q) => $q->where('name', 'psychologist'));
+            }
+        } else {
             $query->whereHas('role', fn($q) => $q->where('name', 'psychologist'));
         }
 

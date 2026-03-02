@@ -8,6 +8,7 @@ class Event extends Model
 {
     protected $table = 'events';
     protected $fillable = [
+        'user_id',
         'title',
         'description',
         'event_date',
@@ -17,5 +18,10 @@ class Event extends Model
     public function media()
     {
         return $this->morphMany(Media::class, 'mediable');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

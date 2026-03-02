@@ -126,6 +126,11 @@ class User extends Authenticatable
         return $this->hasMany(FoodDiary::class);
     }
 
+    public function events()
+    {
+        return $this->hasMany(Event::class);
+    }
+
     public function media()
     {
         return $this->morphMany(Media::class, 'mediable');

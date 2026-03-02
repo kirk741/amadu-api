@@ -1,36 +1,60 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EventController;
+use App\Http\Controllers\PsychologistBookController;
+use App\Http\Controllers\SupportPhoneController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
-
 
 Route::prefix('/auth')->group(function () {
   Route::post('/register', [AuthController::class, 'register']);
   Route::post('/login', [AuthController::class, 'login'])->name('login');
-
-  Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-  });
+  Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 });
 
-Route::middleware('blocked')->group(function () {
-  Route::middleware('auth:sanctum')->group(function () {
-    Route::prefix('/user')->group(function () {
-      Route::prefix('/me')->group(function () {
-        Route::get('/', [UserController::class, 'me']);
-        Route::patch('/', [UserController::class, 'update']);
-        Route::delete('/', [UserController::class, 'destroy']);
-      });
+Route::prefix('/user')->group(function () {
+  Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
+    Route::get('/me', [UserController::class, 'me']);
+    Route::patch('/me', [UserController::class, 'update']);
+    Route::delete('/me', [UserController::class, 'destroy']);
 
-      Route::get('/', [UserController::class, 'index']);
-      Route::get('/{model}', [UserController::class, 'show']);
-
-      Route::prefix('/{model}')->middleware('admin')->group(function () {
-        Route::post('/block', [UserController::class, 'block']);
-        Route::post('/unblock', [UserController::class, 'unblock']);
-        Route::patch('/set-role', [UserController::class, 'setRole']);
-      });
+    Route::prefix('/{model}')->middleware('admin')->group(function () {
+      Route::post('/block', [UserController::class, 'block']);
+      Route::post('/unblock', [UserController::class, 'unblock']);
+      Route::patch('/set-role', [UserController::class, 'setRole']);
     });
+  });
+  Route::get('/', [UserController::class, 'index']);
+  Route::get('/{model}', [UserController::class, 'show']);
+});
+
+Route::prefix('/books')->group(function () {
+  Route::middleware(['auth:sanctum', 'blocked', 'psychologist'])->group(function () {
+    Route::post('/', [PsychologistBookController::class, 'store']);
+    Route::patch('/{book}', [PsychologistBookController::class, 'update']);
+    Route::delete('/{book}', [PsychologistBookController::class, 'destroy']);
+  });
+  Route::get('/', [PsychologistBookController::class, 'index']);
+  Route::get('/{book}', [PsychologistBookController::class, 'show']);
+});
+
+Route::prefix('/support-phones')->group(function () {
+  Route::middleware(['auth:sanctum', 'blocked', 'admin'])->group(function () {
+    Route::post('/', [SupportPhoneController::class, 'store']);
+    Route::delete('/{phone}', [SupportPhoneController::class, 'destroy']);
+    Route::patch('/{phone}', [SupportPhoneController::class, 'update']);
+  });
+  Route::get('/', [SupportPhoneController::class, 'index']);
+});
+
+Route::prefix('/events')->group(function () {
+  Route::get('/', [EventController::class, 'index']);
+  Route::get('/{event}', [EventController::class, 'show']);
+
+  Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
+    Route::post('/', [EventController::class, 'store']);
+    Route::patch('/{event}', [EventController::class, 'update']);
+    Route::delete('/{event}', [EventController::class, 'destroy']);
   });
 });

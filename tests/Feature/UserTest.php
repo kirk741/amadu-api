@@ -48,7 +48,7 @@ class UserTest extends TestCase
     public function test_user_can_see_his_own_profile()
     {
         $response = $this->actingAs($this->client)
-            ->getJson('/user/me/');
+            ->getJson('user/me');
 
         $response->assertStatus(200)
             ->assertJsonPath('data.email', $this->client->email);
@@ -60,7 +60,7 @@ class UserTest extends TestCase
         $file = UploadedFile::fake()->image('avatar.jpg');
 
         $response = $this->actingAs($this->client)
-            ->patchJson('/user/me/', [
+            ->patchJson('user/me', [
                 'name' => 'New Name',
                 'avatar' => $file
             ]);
@@ -118,7 +118,7 @@ class UserTest extends TestCase
         $this->client->update(['is_blocked' => true]);
 
         $response = $this->actingAs($this->client)
-            ->getJson('/user');
+            ->getJson('user/me');
 
         $response->assertStatus(403);
     }

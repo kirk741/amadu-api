@@ -12,27 +12,31 @@ class UserPolicy
         return $user->id === $model->id;
     }
 
-    public function viewAny(User $user): bool
+    public function viewAny(?User $user): bool
     {
-        return in_array($user->role?->name, ['admin', 'psychologist', 'client']);
+        return true;
     }
 
-    public function view(User $user, User $model): bool
+    public function view(?User $user, User $model): bool
     {
+        if ($model->role?->name === 'psychologist') {
+            return true;
+        }
+
+        if (!$user) {
+            return false;
+        }
+
         if ($user->id === $model->id) {
             return true;
         }
 
-        if ($user->role === 'admin') {
+        if ($user->role?->name === 'admin') {
             return true;
         }
 
-        if ($user->role === 'client') {
-            return $model->role->name === 'psychologist';
-        }
-
-        if ($user->role === 'psychologist') {
-            return $model->role->name === 'psychologist' || $model->role->name === 'client';
+        if ($user->role?->name === 'psychologist') {
+            return $model->role?->name === 'psychologist' || $model->role?->name === 'client';
         }
 
         return false;
