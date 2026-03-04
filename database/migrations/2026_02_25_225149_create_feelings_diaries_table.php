@@ -19,6 +19,7 @@ return new class extends Migration
             $table->text('body_feelings')->nullable();
             $table->text('feelings')->nullable();
             $table->text('conclusion')->nullable();
+            $table->softDeletes();
             $table->timestamps();
             
             $table->index(['user_id', 'created_at']);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -52,7 +53,10 @@ class UserController extends Controller
 
         if ($request->hasFile('avatar')) {
             if ($user->media()) {
-                $user->media()->delete();
+                foreach ($user->media->where('collection', 'avatar') as $oldMedia) {
+                    Storage::disk('public')->delete($oldMedia->file_path);
+                    $oldMedia->delete();
+                }
             }
             $file = $request->file('avatar');
             $path = $file->store('avatars', 'public');
@@ -77,7 +81,11 @@ class UserController extends Controller
     {
         $user = $request->user();
         $this->authorize('delete', $user);
-        $user->delete();
+
+        if ($user->media()) {
+            Storage::disk('public')->delete($user->media()->file_path);
+            $user->delete();
+        }
 
         return response()->json([
             'success' => true,

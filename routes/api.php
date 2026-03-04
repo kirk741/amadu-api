@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\FeelingsDiaryController;
+use App\Http\Controllers\FoodDiaryController;
 use App\Http\Controllers\PsychologistBookController;
 use App\Http\Controllers\SupportPhoneController;
 use App\Http\Controllers\UserController;
@@ -56,5 +58,32 @@ Route::prefix('/events')->group(function () {
     Route::post('/', [EventController::class, 'store']);
     Route::patch('/{event}', [EventController::class, 'update']);
     Route::delete('/{event}', [EventController::class, 'destroy']);
+  });
+});
+
+Route::prefix('/feelings-diaries')->group(function () {
+  Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
+    Route::get('/trash', [FeelingsDiaryController::class, 'trash']);
+    Route::get('/', [FeelingsDiaryController::class, 'index']);
+    Route::get('/{diary}', [FeelingsDiaryController::class, 'show']);
+    Route::post('/', [FeelingsDiaryController::class, 'store']);
+    Route::patch('/{diary}', [FeelingsDiaryController::class, 'update']);
+    Route::delete('/{diary}/soft', [FeelingsDiaryController::class, 'softDelete']);
+    Route::post('/{id}/restore', [FeelingsDiaryController::class, 'restore']);
+    Route::delete('/{id}/force', [FeelingsDiaryController::class, 'destroy']);
+  });
+});
+
+Route::prefix('/food-diaries')->group(function () {
+  Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
+    Route::get('/trash', [FoodDiaryController::class, 'trash']); // ВЫШЕ ЧЕМ {diary}
+    Route::get('/', [FoodDiaryController::class, 'index']);
+    Route::get('/{diary}', [FoodDiaryController::class, 'show']);
+    Route::post('/', [FoodDiaryController::class, 'store']);
+    Route::patch('/{diary}', [FoodDiaryController::class, 'update']);
+    Route::delete('/{diary}/soft', [FoodDiaryController::class, 'softDelete']);
+    Route::post('/{id}/restore', [FoodDiaryController::class, 'restore']);
+    Route::delete('/{id}/force', [FoodDiaryController::class, 'destroy']);
+    Route::get('/{diary}/file', [FoodDiaryController::class, 'getFile']);
   });
 });

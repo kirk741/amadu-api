@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PsychologistBook;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Storage;
 
 class PsychologistBookController extends Controller
 {
@@ -80,6 +81,7 @@ class PsychologistBookController extends Controller
 
         if ($request->hasFile('cover')) {
             if ($book->media()) {
+                Storage::disk('public')->delete($book->media()->file_path);
                 $book->media()->delete();
             }
             $file = $request->file('cover');
@@ -100,7 +102,10 @@ class PsychologistBookController extends Controller
     {
         $this->authorize('delete', $book);
 
-        $book->media()->delete();
+        if($book->media()) {
+            Storage::disk('public')->delete($book->media()->file_path);
+            $book->media()->delete();
+        }
         $book->delete();
 
         return response()->json(['success' => true, 'message' => 'Книга удалена'], 200);

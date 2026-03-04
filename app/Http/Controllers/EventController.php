@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Event;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Storage;
 
 class EventController extends Controller
 {
@@ -71,9 +72,18 @@ class EventController extends Controller
         $event->update($validated);
 
         if ($request->hasFile('poster')) {
-            $event->media()->delete();
+            foreach ($event->media as $item) {
+                Storage::disk('public')->delete($item->file_path);
+                $item->delete();
+            }
+
             $path = $request->file('poster')->store('events', 'public');
-            $event->media()->create(['collection' => 'poster', 'file_path' => $path]);
+            $event->media()->create([
+                'collection' => 'poster',
+                'file_path' => $path,
+                'mime_type' => $request->file('poster')->getMimeType(),
+                'size' => $request->file('poster')->getSize(),
+            ]);
         }
 
         return response()->json(['success' => true, 'data' => $event->load('media')], 200);
@@ -82,7 +92,12 @@ class EventController extends Controller
     public function destroy(Event $event)
     {
         $this->authorize('delete', $event);
-        $event->media()->delete();
+
+        foreach ($event->media as $item) {
+            Storage::disk('public')->delete($item->file_path);
+            $item->delete();
+        }
+
         $event->delete();
         return response()->json(['success' => true, 'message' => 'Событие удалено'], 200);
     }

@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class FoodDiary extends Model
 {
-    use HasUlids;
+    use HasUlids, SoftDeletes;
     protected $keyType = 'string';
     public $incrementing = false;
 

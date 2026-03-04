@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignUlid('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('title');
             $table->longText('content');
+            $table->softDeletes();
             $table->timestamps();
 
             $table->index(['user_id', 'created_at']);

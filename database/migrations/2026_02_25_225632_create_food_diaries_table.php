@@ -15,7 +15,8 @@ return new class extends Migration
             $table->ulid('id')->primary();
             $table->foreignUlid('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('title');
-            $table->longText('content');
+            $table->longText('content')->nullable();
+            $table->softDeletes();
             $table->timestamps();
 
             $table->index(['user_id', 'created_at']);
