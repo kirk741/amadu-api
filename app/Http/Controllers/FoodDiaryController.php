@@ -78,7 +78,7 @@ class FoodDiaryController extends Controller
         ]);
 
         if ($request->hasFile('cover')) {
-            if ($diary->media) {
+            if ($diary->media->isNotEmpty()) {
                 foreach ($diary->media as $item) {
                     Storage::disk('local')->delete($item->file_path);
                     $item->delete();
@@ -132,7 +132,7 @@ class FoodDiaryController extends Controller
         $diary = FoodDiary::withTrashed()->with('media')->findOrFail($id);
         $this->authorize('delete', $diary);
 
-        if ($diary->media) {
+        if ($diary->media->isNotEmpty()) {
             foreach ($diary->media as $item) {
                 Storage::disk('local')->delete($item->file_path);
                 $item->delete();

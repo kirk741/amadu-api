@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\EmotionLog;
 use App\Models\FeelingsDiary;
 use App\Models\FoodDiary;
 use App\Models\PersonalDiary;
@@ -27,5 +28,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(FeelingsDiary::class, BaseDiaryPolicy::class);
         Gate::policy(PersonalDiary::class, BaseDiaryPolicy::class);
         Gate::policy(FoodDiary::class, BaseDiaryPolicy::class);
+        Gate::policy(EmotionLog::class, BaseDiaryPolicy::class);
     }
 }

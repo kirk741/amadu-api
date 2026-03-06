@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\EmotionController;
+use App\Http\Controllers\EmotionLogController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FeelingsDiaryController;
 use App\Http\Controllers\FoodDiaryController;
@@ -42,7 +44,7 @@ Route::prefix('/books')->group(function () {
 });
 
 Route::prefix('/support-phones')->group(function () {
-  Route::middleware(['auth:sanctum', 'blocked', 'admin'])->group(function () {
+  Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('/', [SupportPhoneController::class, 'store']);
     Route::delete('/{phone}', [SupportPhoneController::class, 'destroy']);
     Route::patch('/{phone}', [SupportPhoneController::class, 'update']);
@@ -51,14 +53,13 @@ Route::prefix('/support-phones')->group(function () {
 });
 
 Route::prefix('/events')->group(function () {
-  Route::get('/', [EventController::class, 'index']);
-  Route::get('/{event}', [EventController::class, 'show']);
-
   Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
     Route::post('/', [EventController::class, 'store']);
     Route::patch('/{event}', [EventController::class, 'update']);
     Route::delete('/{event}', [EventController::class, 'destroy']);
   });
+  Route::get('/', [EventController::class, 'index']);
+  Route::get('/{event}', [EventController::class, 'show']);
 });
 
 Route::prefix('/feelings-diaries')->group(function () {
@@ -76,7 +77,7 @@ Route::prefix('/feelings-diaries')->group(function () {
 
 Route::prefix('/food-diaries')->group(function () {
   Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
-    Route::get('/trash', [FoodDiaryController::class, 'trash']); // ВЫШЕ ЧЕМ {diary}
+    Route::get('/trash', [FoodDiaryController::class, 'trash']);
     Route::get('/', [FoodDiaryController::class, 'index']);
     Route::get('/{diary}', [FoodDiaryController::class, 'show']);
     Route::post('/', [FoodDiaryController::class, 'store']);
@@ -85,5 +86,25 @@ Route::prefix('/food-diaries')->group(function () {
     Route::post('/{id}/restore', [FoodDiaryController::class, 'restore']);
     Route::delete('/{id}/force', [FoodDiaryController::class, 'destroy']);
     Route::get('/{diary}/file', [FoodDiaryController::class, 'getFile']);
+  });
+});
+
+Route::prefix('/emotions')->group(function () {
+  Route::middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::post('/', [EmotionController::class, 'store']);
+    Route::patch('/{emotion}', [EmotionController::class, 'update']);
+    Route::delete('/{emotion}', [EmotionController::class, 'destroy']);
+  });
+  Route::get('/', [EmotionController::class, 'index']);
+  Route::get('/{emotion}', [EmotionController::class, 'show']);
+});
+
+Route::prefix('/emotion-logs')->group(function () {
+  Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
+    Route::post('/', [EmotionLogController::class, 'store']);
+    Route::patch('/{emotionLog}', [EmotionLogController::class, 'update']);
+    Route::delete('/{emotionLog}', [EmotionLogController::class, 'destroy']);
+    Route::get('/', [EmotionLogController::class, 'index']);
+    Route::get('/{emotionLog}', [EmotionLogController::class, 'show']);
   });
 });

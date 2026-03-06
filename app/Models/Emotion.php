@@ -14,4 +14,8 @@ class Emotion extends Model
     public function emotionLogs() {
         return $this->hasMany(EmotionLog::class);
     }
+
+    public function media() {
+        return $this->morphMany(Media::class, 'mediable');
+    }
 }
