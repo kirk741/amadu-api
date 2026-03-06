@@ -109,7 +109,7 @@ class FoodDiaryTest extends TestCase
             'content' => 'В корзину'
         ]);
 
-        $response = $this->actingAs($this->client)->deleteJson("/food-diaries/{$diary->id}/soft");
+        $response = $this->actingAs($this->client)->deleteJson("/food-diaries/{$diary->id}");
 
         $response->assertStatus(200);
         $this->assertSoftDeleted('food_diaries', ['id' => $diary->id]);
