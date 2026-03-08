@@ -8,6 +8,7 @@ use App\Http\Controllers\FeelingsDiaryController;
 use App\Http\Controllers\FoodDiaryController;
 use App\Http\Controllers\PersonalDiaryController;
 use App\Http\Controllers\PsychologistBookController;
+use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\SupportPhoneController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -120,5 +121,17 @@ Route::prefix('/personal-diaries')->group(function () {
     Route::patch('/{personalDiary}', [PersonalDiaryController::class, 'update']);
     Route::delete('/{personalDiary}', [PersonalDiaryController::class, 'softDelete']);
     Route::delete('/{id}/force', [PersonalDiaryController::class, 'destroy']);
+  });
+});
+
+Route::prefix('/schedule')->group(function () {
+  Route::get('/', [ScheduleController::class, 'index']);
+  Route::get('/{schedule}', [ScheduleController::class, 'show']);
+
+  Route::middleware(['auth:sanctum', 'psychologist'])->group(function () {
+    Route::post('/', [ScheduleController::class, 'store']);
+    Route::post('/generate', [ScheduleController::class, 'generate']);
+    Route::patch('/{schedule}', [ScheduleController::class, 'update']);
+    Route::delete('/{schedule}', [ScheduleController::class, 'destroy']);
   });
 });

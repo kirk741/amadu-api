@@ -13,18 +13,16 @@ return new class extends Migration
     {
         Schema::create('appointments', function (Blueprint $table) {
             $table->ulid('id')->primary();
-            $table->datetime('scheduled_at');
-            $table->integer('duration_minutes')->default(60);
+            $table->foreignUlid('schedule_id')->constrained('schedules')->cascadeOnDelete();
             $table->string('status')->default('scheduled');
             $table->foreignId('notification_id')->nullable()->constrained('notifications')->cascadeOnDelete();
             $table->foreignUlid('psychologist_id')->constrained('users')->cascadeOnDelete();
             $table->foreignUlid('client_id')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
 
-            $table->index(['psychologist_id', 'scheduled_at']);
-            $table->index(['client_id', 'scheduled_at']);
+            $table->index(['psychologist_id', 'status']);
+            $table->index(['client_id', 'status']);
             $table->index('status');
-            $table->index('scheduled_at');
         });
     }
 

@@ -135,4 +135,9 @@ class User extends Authenticatable
     {
         return $this->morphMany(Media::class, 'mediable');
     }
+
+    public function schedules()
+    {
+        return $this->hasMany(Schedule::class);
+    }
 }
