@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmotionController;
 use App\Http\Controllers\EmotionLogController;
@@ -133,5 +134,15 @@ Route::prefix('/schedule')->group(function () {
     Route::post('/generate', [ScheduleController::class, 'generate']);
     Route::patch('/{schedule}', [ScheduleController::class, 'update']);
     Route::delete('/{schedule}', [ScheduleController::class, 'destroy']);
+  });
+});
+
+Route::prefix('/appointments')->group(function () {
+  Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
+    Route::get('/', [AppointmentController::class, 'index']);
+    Route::post('/', [AppointmentController::class, 'store']);
+    Route::get('/{appointment}', [AppointmentController::class, 'show']);
+    Route::patch('/{appointment}', [AppointmentController::class, 'update']);
+    Route::delete('/{appointment}', [AppointmentController::class, 'destroy']);
   });
 });

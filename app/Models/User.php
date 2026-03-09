@@ -81,22 +81,22 @@ class User extends Authenticatable
         return $this->hasMany(Notification::class);
     }
 
-    public function psychologistAppointment()
+    public function psychologistAppointments()
     {
         return $this->hasMany(Appointment::class, 'psychologist_id');
     }
 
-    public function clientAppointment()
+    public function clientAppointments()
     {
         return $this->hasMany(Appointment::class, 'client_id');
     }
 
-    public function psychologistConversation()
+    public function psychologistConversations()
     {
         return $this->hasMany(Conversation::class, 'psychologist_id');
     }
 
-    public function clientConversation()
+    public function clientConversations()
     {
         return $this->hasMany(Conversation::class, 'client_id');
     }
