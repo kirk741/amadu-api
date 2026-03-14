@@ -114,32 +114,40 @@ class ScheduleController extends Controller
     public function generate(Request $request)
     {
         $validated = $request->validate([
-            'date' => 'required|date|after_or_equal:today',
+            'dates' => 'required|array',
+            'dates.*'       => 'date|after_or_equal:today',
             'start_time'     => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i|after:start_time',
             'slot_duration' => 'required|integer|min:15|max:120'
         ]);
 
         $slots = [];
-        $current = Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
-        $end = Carbon::parse($validated['date'] . ' ' . $validated['end_time']);
+        $userId = $request->user()->id;
 
-        while ($current->copy()->addMinutes($validated['slot_duration']) <= $end) {
-            $slotStart = $current->copy();
-            $slotEnd = $current->addMinutes($validated['slot_duration'])->copy();
+        foreach ($validated['dates'] as $date) {
+            $current = Carbon::parse($date . ' ' . $validated['start_time']);
+            $end = Carbon::parse($date . ' ' . $validated['end_time']);
 
-            $exists = $request->user()->schedules()->where('start_time', $slotStart)->exists();
+            while ($current->copy()->addMinutes($validated['slot_duration']) <= $end) {
+                $slotStart = $current->copy();
+                $slotEnd = $current->copy()->addMinutes($validated['slot_duration']);
 
-            if (!$exists) {
-                $slots[] = [
-                    'id' => Str::ulid(),
-                    'user_id' => $request->user()->id,
-                    'start_time' => $slotStart->toDateTimeString(),
-                    'end_time' => $slotEnd->toDateTimeString(),
-                    'is_booked' => false,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
+                $exists = $request->user()->schedules()
+                    ->where('start_time', $slotStart->toDateTimeString())
+                    ->exists();
+
+                if (!$exists) {
+                    $slots[] = [
+                        'id'         => (string) Str::ulid(),
+                        'user_id'    => $userId,
+                        'start_time' => $slotStart->toDateTimeString(),
+                        'end_time'   => $slotEnd->toDateTimeString(),
+                        'is_booked'  => false,
+                        'created_at' => now()->toDateTimeString(),
+                        'updated_at' => now()->toDateTimeString(),
+                    ];
+                }
+                $current->addMinutes($validated['slot_duration']);
             }
         }
 

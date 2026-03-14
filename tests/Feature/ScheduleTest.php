@@ -90,40 +90,6 @@ class ScheduleTest extends TestCase
         ]);
     }
 
-    public function test_psychologist_can_generate_slots()
-    {
-        $this->actingAs($this->psychologist);
-
-        $response = $this->postJson('/schedules/generate', [
-            'date' => '2027-03-10',
-            'start_time' => '10:00',
-            'end_time' => '13:00',
-            'slot_duration' => 60
-        ]);
-
-        $response->assertStatus(201)
-            ->assertJsonPath('count', 3);
-
-        $this->assertDatabaseCount('schedules', 3);
-    }
-
-    public function test_generate_skips_existing_slots()
-    {
-        $this->actingAs($this->psychologist);
-
-        $this->createSlot($this->psychologist->id, false, '2027-03-10 10:00:00');
-
-        $response = $this->postJson('/schedules/generate', [
-            'date' => '2027-03-10',
-            'start_time' => '10:00',
-            'end_time' => '12:00',
-            'slot_duration' => 60
-        ]);
-
-        $response->assertStatus(201)
-            ->assertJsonPath('count', 1);
-    }
-
     public function test_psychologist_cannot_update_others_slot()
     {
         $othersSlot = $this->createSlot($this->otherPsychologist->id, false);
@@ -156,5 +122,56 @@ class ScheduleTest extends TestCase
         $response->assertStatus(200);
         $this->assertDatabaseMissing('schedules', ['id' => $slot1->id]);
         $this->assertDatabaseMissing('schedules', ['id' => $slot2->id]);
+    }
+
+    public function test_psychologist_can_generate_slots_for_multiple_dates()
+    {
+        $this->actingAs($this->psychologist);
+
+        $response = $this->postJson('/schedules/generate', [
+            'dates' => ['2027-05-10', '2027-05-11'], // Массив дат
+            'start_time' => '09:00',
+            'end_time' => '11:00',
+            'slot_duration' => 60
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('count', 4);
+
+        $this->assertDatabaseCount('schedules', 4);
+        $this->assertDatabaseHas('schedules', ['start_time' => '2027-05-10 09:00:00']);
+        $this->assertDatabaseHas('schedules', ['start_time' => '2027-05-11 10:00:00']);
+    }
+
+    public function test_generate_returns_error_if_all_slots_already_exist()
+    {
+        $this->actingAs($this->psychologist);
+
+        $this->createSlot($this->psychologist->id, false, '2027-06-01 10:00:00');
+
+        $response = $this->postJson('/schedules/generate', [
+            'dates' => ['2027-06-01'],
+            'start_time' => '10:00',
+            'end_time' => '11:00',
+            'slot_duration' => 60
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonFragment(['message' => 'Слоты уже существуют или интервал слишком мал']);
+    }
+
+    public function test_generate_validation_fails_for_invalid_times()
+    {
+        $this->actingAs($this->psychologist);
+
+        $response = $this->postJson('/schedules/generate', [
+            'dates' => ['2027-03-10'],
+            'start_time' => '15:00',
+            'end_time' => '10:00', // Конец раньше начала
+            'slot_duration' => 60
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['end_time']);
     }
 }
