@@ -15,13 +15,33 @@ class AppointmentController extends Controller
 
     public function index(Request $request)
     {
-        $relation = $request->user()->role->name === 'psychologist'
-            ? 'psychologistAppointments'
-            : 'clientAppointments';
+        $user = $request->user();
+        $relation = match ($user->role->name) {
+            'psychologist' => 'psychologistAppointments',
+            'client'       => 'clientAppointments',
+            default        => null,
+        };
+
+        if (!$relation || !method_exists($user, $relation)) {
+            return response()->json(['success' => false, 'message' => 'Нет доступа'], 403);
+        }
+
+        $query = $request->user()->$relation()->with(['schedule', 'psychologist', 'client']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('status', 'like', "%{$search}%")
+                    ->orWhereRelation('schedule', 'start_time', 'like', "%{$search}%")
+                    ->orWhereRelation('schedule', 'end_time', 'like', "%{$search}%")
+                    ->orWhereRelation('psychologist', 'name', 'like', "%{$search}%")
+                    ->orWhereRelation('client', 'name', 'like', "%{$search}%");
+            });
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $request->user()->$relation()->with(['schedule', 'psychologist', 'client'])->latest()->paginate(10)
+            'data' => $query->latest()->paginate(10)
         ]);
     }
 

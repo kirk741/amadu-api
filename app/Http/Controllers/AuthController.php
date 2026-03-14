@@ -62,7 +62,7 @@ class AuthController extends Controller
         $validated = $request->validate(
             [
                 'email' => 'required|email|unique:users',
-                'password' => 'required|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!#$%&*)(+\-=]).+$/',
+                'password' => 'required|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!#$%&*)(+\-=]).+$/|confirmed',
                 'name' => 'required|string',
                 'birth_date' => 'nullable|string',
                 'bio' => 'nullable|string',

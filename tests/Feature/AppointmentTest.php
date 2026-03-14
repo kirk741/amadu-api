@@ -16,20 +16,21 @@ class AppointmentTest extends TestCase
     use RefreshDatabase;
 
     protected User $psychologist, $client;
+    protected Role $clientRole, $psychologistRole;
 
     protected function setUp(): void
     {
         parent::setUp();
         $adminRole = Role::create(['id' => 1, 'name' => 'admin']);
-        $clientRole = Role::create(['id' => 2, 'name' => 'client']);
-        $psychologistRole = Role::create(['id' => 3, 'name' => 'psychologist']);
+        $this->clientRole = Role::create(['id' => 2, 'name' => 'client']);
+        $this->psychologistRole = Role::create(['id' => 3, 'name' => 'psychologist']);
 
         $this->psychologist = User::create([
             'id' => Str::ulid(),
             'name' => 'Dr. House',
             'email' => 'h@t.t',
             'password' => bcrypt('Pass123!'),
-            'role_id' => $psychologistRole->id
+            'role_id' => $this->psychologistRole->id
         ]);
 
         $this->client = User::create([
@@ -37,7 +38,7 @@ class AppointmentTest extends TestCase
             'name' => 'Patient',
             'email' => 'p@t.t',
             'password' => bcrypt('Pass123!'),
-            'role_id' => $clientRole->id
+            'role_id' => $this->clientRole->id
         ]);
     }
 
@@ -115,4 +116,91 @@ class AppointmentTest extends TestCase
         $this->assertDatabaseHas('appointments', ['id' => $appointment->id, 'status' => 'cancelled']);
         $this->assertDatabaseHas('schedules', ['id' => $slot->id, 'is_booked' => false]);
     }
+
+     public function test_psychologist_can_search_by_client_name()
+    {
+        $slot = Schedule::create([
+            'user_id' => $this->psychologist->id,
+            'start_time' => now()->addDay(),
+            'end_time' => now()->addDay()->addHour(),
+            'is_booked' => true
+        ]);
+
+        Appointment::create([
+            'schedule_id' => $slot->id,
+            'psychologist_id' => $this->psychologist->id,
+            'client_id' => $this->client->id,
+            'status' => 'scheduled'
+        ]);
+
+        $response = $this->actingAs($this->psychologist)
+            ->getJson('/appointments?search=Patient');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.client.name', 'Patient');
+    }
+
+    public function test_client_can_search_by_psychologist_name()
+    {
+        $slot = Schedule::create([
+            'user_id' => $this->psychologist->id,
+            'start_time' => now()->addDay(),
+            'end_time' => now()->addDay()->addHour(),
+            'is_booked' => true
+        ]);
+
+        Appointment::create([
+            'schedule_id' => $slot->id,
+            'psychologist_id' => $this->psychologist->id,
+            'client_id' => $this->client->id,
+            'status' => 'scheduled'
+        ]);
+
+        $response = $this->actingAs($this->client)
+            ->getJson('/appointments?search=House');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.psychologist.name', 'Dr. House');
+    }
+
+    public function test_search_is_scoped_to_user()
+{
+    $otherPsy = User::create([
+        'id' => Str::ulid(),
+        'name' => 'Dr. Strange',
+        'email' => 's@t.t',
+        'password' => bcrypt('Pass123!'),
+        'role_id' => $this->psychologistRole->id
+    ]);
+
+    $otherClient = User::create([
+        'id' => Str::ulid(),
+        'name' => 'Other Patient',
+        'email' => 'op@t.t',
+        'password' => bcrypt('Pass123!'),
+        'role_id' => $this->clientRole->id
+    ]);
+
+    $slot = Schedule::create([
+        'user_id' => $otherPsy->id,
+        'start_time' => now()->addDay(),
+        'end_time' => now()->addDay()->addHour(),
+        'is_booked' => true
+    ]);
+
+    Appointment::create([
+        'schedule_id' => $slot->id,
+        'psychologist_id' => $otherPsy->id,
+        'client_id' => $otherClient->id, 
+        'status' => 'scheduled'
+    ]);
+
+    $response = $this->actingAs($this->psychologist)
+        ->getJson('/appointments?search=Strange');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(0, 'data.data');
+}
 }

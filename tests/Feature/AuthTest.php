@@ -31,6 +31,7 @@ class AuthTest extends TestCase
         $response = $this->postJson('/auth/register', [
             'email' => 'noavatar@example.com',
             'password' => 'StrongPass1!',
+            'password_confirmation' => 'StrongPass1!',
             'name' => 'No Avatar User',
             'birth_date' => '2000-01-01',
             'bio' => 'Hello world',
@@ -61,6 +62,7 @@ class AuthTest extends TestCase
         $response = $this->postJson('/auth/register', [
             'email' => 'avatar@example.com',
             'password' => 'StrongPass1!',
+            'password_confirmation' => 'StrongPass1!',
             'name' => 'Avatar User',
             'birth_date' => '2000-01-01',
             'bio' => 'Hello with avatar',

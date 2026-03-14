@@ -11,11 +11,23 @@ class EventController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index()
+    public function index(Request $request)
     {
+        $query = Event::with('media')->latest('event_date');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('event_date', 'like', "%{$search}%")
+                ->orWhere('title', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%")
+                ->orWhere('location', 'like', "%{$search}%");
+            });
+        }
+
         return response()->json([
             'success' => true,
-            'data' => Event::with('media')->where('event_date', '>=', now())->orderBy('event_date')->get()
+            'data' => $query->paginate(10)
         ], 200);
     }
 

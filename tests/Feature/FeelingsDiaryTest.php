@@ -54,8 +54,8 @@ class FeelingsDiaryTest extends TestCase
         $response = $this->actingAs($this->client)->getJson('/feelings-diaries');
 
         $response->assertStatus(200)
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.thoughts', 'Моя запись');
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.thoughts', 'Моя запись');
     }
 
     public function test_client_cant_view_someone_elses_diary()
@@ -116,7 +116,6 @@ class FeelingsDiaryTest extends TestCase
         $this->assertSoftDeleted('feelings_diaries', ['id' => $diary->id]);
     }
 
-
     public function test_client_can_see_only_deleted_diaries_in_trash()
     {
         $this->client->feelingsDiaries()->create(['thoughts' => 'Живой']);
@@ -162,5 +161,60 @@ class FeelingsDiaryTest extends TestCase
             ->postJson("/feelings-diaries/{$othersDiary->id}/restore");
 
         $response->assertStatus(403);
+    }
+
+    public function test_it_can_search_diaries_by_situation_or_thoughts()
+    {
+        $this->client->feelingsDiaries()->create([
+            'situation' => 'На работе случился конфликт',
+            'thoughts' => 'Меня не ценят',
+            'feelings' => 'Гнев'
+        ]);
+
+        $this->client->feelingsDiaries()->create([
+            'situation' => 'Прогулка в парке',
+            'thoughts' => 'Красивая погода',
+            'feelings' => 'Покой'
+        ]);
+
+        $response = $this->actingAs($this->client)
+            ->getJson('/feelings-diaries?search=конфликт');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.thoughts', 'Меня не ценят');
+
+        $response = $this->actingAs($this->client)
+            ->getJson('/feelings-diaries?search=Покой');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.situation', 'Прогулка в парке');
+    }
+
+    public function test_search_is_scoped_to_the_authenticated_user()
+    {
+        $this->otherClient->feelingsDiaries()->create([
+            'situation' => 'Секретная ситуация',
+            'thoughts' => 'Никто не должен видеть'
+        ]);
+
+        $response = $this->actingAs($this->client)
+            ->getJson('/feelings-diaries?search=Секретная');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(0, 'data.data');
+    }
+
+    public function test_it_returns_all_diaries_when_search_is_empty()
+    {
+        $this->client->feelingsDiaries()->create(['thoughts' => 'Запись 1']);
+        $this->client->feelingsDiaries()->create(['thoughts' => 'Запись 2']);
+
+        $response = $this->actingAs($this->client)
+            ->getJson('/feelings-diaries?search=');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data.data');
     }
 }

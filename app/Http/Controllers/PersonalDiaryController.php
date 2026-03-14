@@ -14,13 +14,20 @@ class PersonalDiaryController extends Controller
     {
         $this->authorize('viewAny', PersonalDiary::class);
         
-        $data = $request->user()->personalDiaries()
-            ->latest()
-            ->paginate(10);
+        $query = $request->user()->personalDiaries()->latest();
+
+        if($request->filled('search')) {
+            $search = $request->search;
+
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                ->orWhere('content', 'like', "%{$search}%");
+            });
+        }
 
         return response()->json([
             'success' => true,
-            'data' => $data
+            'data' => $query->paginate(10)
         ]);
     }
 

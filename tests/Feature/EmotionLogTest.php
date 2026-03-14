@@ -6,7 +6,6 @@ use App\Models\Emotion;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -46,7 +45,8 @@ class EmotionLogTest extends TestCase
     public function test_client_can_log_emotion()
     {
         $response = $this->actingAs($this->client)->postJson('/emotion-logs', [
-            'emotion_id' => $this->emotion->id
+            'emotion_id' => $this->emotion->id,
+            'created_at' => now()
         ]);
 
         $response->assertStatus(201);
@@ -108,5 +108,50 @@ class EmotionLogTest extends TestCase
 
         $this->actingAs($this->client)->deleteJson("/emotion-logs/{$othersLog->id}")
             ->assertStatus(403);
+    }
+   public function test_it_can_search_by_emotion_name()
+    {
+        $happy = Emotion::create(['name' => 'Happy']);
+        $sad = Emotion::create(['name' => 'Sad']);
+
+        $this->client->emotionLogs()->create(['emotion_id' => $happy->id]);
+        $this->client->emotionLogs()->create(['emotion_id' => $sad->id]);
+
+        $response = $this->actingAs($this->client)->getJson('/emotion-logs?search=Happy');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.emotion.name', 'Happy');
+    }
+
+    public function test_it_can_search_by_date()
+    {
+        $this->client->emotionLogs()->create([
+            'emotion_id' => $this->emotion->id,
+            'created_at' => '2025-10-10 10:00:00'
+        ]);
+        $this->client->emotionLogs()->create([
+            'emotion_id' => $this->emotion->id,
+            'created_at' => '2026-01-01 10:00:00'
+        ]);
+
+        $response = $this->actingAs($this->client)->getJson('/emotion-logs?search=2025');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data');
+
+        $this->assertStringContainsString('2025-10-10', $response->getContent());
+    }
+
+    public function test_it_does_not_show_other_users_logs_even_if_they_match_search()
+    {
+        $matchingEmotion = Emotion::create(['name' => 'MatchMe']);
+
+        $this->otherClient->emotionLogs()->create(['emotion_id' => $matchingEmotion->id]);
+
+        $response = $this->actingAs($this->client)->getJson('/emotion-logs?search=MatchMe');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(0, 'data.data');
     }
 }

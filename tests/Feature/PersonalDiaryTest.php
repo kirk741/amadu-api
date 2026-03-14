@@ -101,4 +101,57 @@ class PersonalDiaryTest extends TestCase
         $this->actingAs($this->user)->getJson("/personal-diaries/{$othersDiary->id}")
             ->assertStatus(403);
     }
+
+    public function test_user_can_search_personal_diary_by_title_or_content()
+    {
+        $this->user->personalDiaries()->create([
+            'title' => 'Секретные мысли',
+            'content' => 'Сегодня я чувствую прилив сил'
+        ]);
+
+        $this->user->personalDiaries()->create([
+            'title' => 'План на неделю',
+            'content' => 'Купить продукты и выучить Laravel'
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->getJson('/personal-diaries?search=Мысли');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.title', 'Секретные мысли');
+
+        $response = $this->actingAs($this->user)
+            ->getJson('/personal-diaries?search=Laravel');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.title', 'План на неделю');
+    }
+
+    public function test_personal_diary_search_is_scoped_to_correct_user()
+    {
+        $this->otherUser->personalDiaries()->create([
+            'title' => 'Чужие Мысли',
+            'content' => '...'
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->getJson('/personal-diaries?search=Мысли');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(0, 'data.data');
+    }
+
+    public function test_search_returns_all_diaries_if_query_is_empty()
+    {
+        $this->user->personalDiaries()->create(['title' => 'T1', 'content' => 'C1']);
+        $this->user->personalDiaries()->create(['title' => 'T2', 'content' => 'C2']);
+
+        $response = $this->actingAs($this->user)
+            ->getJson('/personal-diaries?search=');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data.data');
+    }
 }

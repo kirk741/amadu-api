@@ -39,6 +39,57 @@ class SupportPhoneTest extends TestCase
 
         $this->getJson('/support-phones')
             ->assertStatus(200)
-            ->assertJsonCount(1, 'data');
+            ->assertJsonCount(1, 'data.data');
+    }
+
+     public function test_it_can_search_phones_by_number_title_or_description()
+    {
+        SupportPhone::create([
+            'phone' => '112',
+            'title' => 'Emergency',
+            'description' => 'Rescue service'
+        ]);
+
+        SupportPhone::create([
+            'phone' => '103',
+            'title' => 'Ambulance',
+            'description' => 'Medical help'
+        ]);
+
+        $this->getJson('/support-phones?search=112')
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.phone', '112');
+
+        $this->getJson('/support-phones?search=Ambulance')
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.title', 'Ambulance');
+
+        $this->getJson('/support-phones?search=Rescue')
+            ->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.description', 'Rescue service');
+    }
+
+    public function test_search_returns_empty_data_if_no_matches_found()
+    {
+        SupportPhone::create(['phone' => '123', 'title' => 'Test', 'description' => 'Desc']);
+
+        $response = $this->getJson('/support-phones?search=NonExistentWord');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(0, 'data.data');
+    }
+
+    public function test_search_returns_all_phones_if_search_parameter_is_empty()
+    {
+        SupportPhone::create(['phone' => '111', 'title' => 'T1', 'description' => 'D1']);
+        SupportPhone::create(['phone' => '222', 'title' => 'T2', 'description' => 'D2']);
+
+        $response = $this->getJson('/support-phones?search=');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data.data');
     }
 }

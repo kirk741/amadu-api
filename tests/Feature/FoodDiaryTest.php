@@ -173,4 +173,56 @@ class FoodDiaryTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    public function test_client_can_search_food_diary_by_title_or_content()
+    {
+        $this->client->foodDiaries()->create([
+            'title' => 'Завтрак чемпиона',
+            'content' => 'Овсянка и кофе'
+        ]);
+
+        $this->client->foodDiaries()->create([
+            'title' => 'Обед',
+            'content' => 'Курица с рисом'
+        ]);
+
+        $response = $this->actingAs($this->client)
+            ->getJson('/food-diaries?search=Завтрак');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.content', 'Овсянка и кофе');
+
+        $response = $this->actingAs($this->client)
+            ->getJson('/food-diaries?search=курица');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(1, 'data.data')
+            ->assertJsonPath('data.data.0.title', 'Обед');
+    }
+
+    public function test_food_diary_search_is_scoped_to_user()
+    {
+        $this->otherClient->foodDiaries()->create([
+            'title' => 'Пицца',
+            'content' => 'Много сыра'
+        ]);
+
+        $response = $this->actingAs($this->client)
+            ->getJson('/food-diaries?search=Пицца');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(0, 'data.data');
+    }
+
+    public function test_food_diary_index_returns_all_paginated_records_without_search()
+    {
+        $this->client->foodDiaries()->create(['title' => 'T1', 'content' => 'C1']);
+        $this->client->foodDiaries()->create(['title' => 'T2', 'content' => 'C2']);
+
+        $response = $this->actingAs($this->client)->getJson('/food-diaries');
+
+        $response->assertStatus(200)
+            ->assertJsonCount(2, 'data.data');
+    }
 }

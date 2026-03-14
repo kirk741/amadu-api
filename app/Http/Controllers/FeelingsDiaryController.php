@@ -13,7 +13,23 @@ class FeelingsDiaryController extends Controller
     public function index(Request $request)
     {
         $this->authorize('viewAny', FeelingsDiary::class);
-        return $request->user()->feelingsDiaries()->latest()->paginate(10);
+        $query = $request->user()->feelingsDiaries()->latest();
+
+        if($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('situation', 'like', "%{$search}%")
+                ->orWhere('thoughts', 'like', "%{$search}%")
+                ->orWhere('body_feelings', 'like', "%{$search}%")
+                ->orWhere('feelings', 'like', "%{$search}%")
+                ->orWhere('conclusion', 'like', "%{$search}%");
+            });
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->paginate(10)
+        ]);
     }
 
     public function store(Request $request)

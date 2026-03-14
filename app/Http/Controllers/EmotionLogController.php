@@ -13,9 +13,19 @@ class EmotionLogController extends Controller
     public function index(Request $request)
     {
         $this->authorize("viewAny", EmotionLog::class);
+        $query = $request->user()->emotionLogs()->with('emotion.media');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('created_at', 'like', "%{$search}%")
+                    ->orWhereRelation('emotion', 'name', 'like', "%{$search}%");
+            });
+        }
+
         return response()->json([
             'success' => true,
-            'data' => $request->user()->emotionLogs()->with('emotion.media')->latest()->paginate(10)
+            'data' => $query->latest()->paginate(10)
         ]);
     }
 
@@ -24,7 +34,8 @@ class EmotionLogController extends Controller
         $this->authorize('create', EmotionLog::class);
 
         $validated = $request->validate([
-            'emotion_id' => 'required|exists:emotions,id'
+            'emotion_id' => 'required|exists:emotions,id',
+            'created_at' => 'required|date'
         ]);
 
         $emotionLog = $request->user()->emotionLogs()->create($validated);
@@ -48,14 +59,15 @@ class EmotionLogController extends Controller
     {
         $this->authorize('update', $emotionLog);
         $validated = $request->validate([
-            'emotion_id' => 'required|exists:emotions,id'
+            'emotion_id' => 'sometimes|exists:emotions,id',
+            'created_at' => 'sometimes|date'
         ]);
 
         $emotionLog->update($validated);
 
         return response()->json([
-            'success'=> true,
-            'data'=> $emotionLog->load('emotion.media')
+            'success' => true,
+            'data' => $emotionLog->load('emotion.media')
         ]);
     }
 
@@ -66,8 +78,8 @@ class EmotionLogController extends Controller
         $emotionLog->delete();
 
         return response()->json([
-            'success'=> true,
-            'message'=> "Запись удалена"
+            'success' => true,
+            'message' => "Запись удалена"
         ]);
     }
 }

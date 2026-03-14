@@ -7,11 +7,23 @@ use Illuminate\Http\Request;
 
 class SupportPhoneController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $query = SupportPhone::latest();
+
+        if($request->filled('search')) {
+            $search = $request->search;
+
+            $query->where(function($q) use ($search) {
+                $q->where('phone', 'like', "%{$search}%")
+                ->orWhere('title', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
         return response()->json([
             'success' => true,
-            'data' => SupportPhone::latest()->get()
+            'data' => $query->paginate(10)
         ]);
     }
 
@@ -25,6 +37,11 @@ class SupportPhoneController extends Controller
 
         $phone = SupportPhone::create($validated);
         return response()->json(['success' => true, 'data' => $phone], 201);
+    }
+
+    public function show(SupportPhone $phone)
+    {
+        return response()->json(['success' => true, 'data' => $phone], 200);
     }
 
     public function update(Request $request, SupportPhone $phone)

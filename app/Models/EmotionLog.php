@@ -14,7 +14,8 @@ class EmotionLog extends Model
     protected $table = "emotion_logs";
     protected $fillable = [
         'user_id',
-        'emotion_id'
+        'emotion_id',
+        'created_at'
     ];
 
     protected $casts = [

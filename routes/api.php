@@ -53,6 +53,7 @@ Route::prefix('/support-phones')->group(function () {
     Route::patch('/{phone}', [SupportPhoneController::class, 'update']);
   });
   Route::get('/', [SupportPhoneController::class, 'index']);
+  Route::get('/{phone}', [SupportPhoneController::class, 'show']);
 });
 
 Route::prefix('/events')->group(function () {

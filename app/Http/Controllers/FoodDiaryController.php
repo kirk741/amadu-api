@@ -14,9 +14,20 @@ class FoodDiaryController extends Controller
     public function index(Request $request)
     {
         $this->authorize("viewAny", FoodDiary::class);
+        $query = $request->user()->foodDiaries()->with('media')->latest();
+
+        if($request->filled('search')) {
+            $search = $request->search;
+
+            $query->where(function($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                ->orWhere('content', 'like', "%{$search}%");
+            });
+        }
+
         return response()->json([
             'success' => true,
-            'data' => $request->user()->foodDiaries()->with('media')->latest()->paginate(10)
+            'data' => $query->paginate(10)
         ], 200);
     }
 
