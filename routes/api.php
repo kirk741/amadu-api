@@ -133,10 +133,10 @@ Route::prefix('/schedules')->group(function () {
     Route::delete('/bulk', [ScheduleController::class, 'bulkDestroy']);
     Route::patch('/{schedule}', [ScheduleController::class, 'update']);
     Route::delete('/{schedule}', [ScheduleController::class, 'destroy']);
-    });
+  });
 
-    Route::get('/', [ScheduleController::class, 'index']);
-    Route::get('/{schedule}', [ScheduleController::class, 'show']);
+  Route::get('/', [ScheduleController::class, 'index']);
+  Route::get('/{schedule}', [ScheduleController::class, 'show']);
 });
 
 Route::prefix('/appointments')->group(function () {
@@ -146,6 +146,8 @@ Route::prefix('/appointments')->group(function () {
   Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
     Route::post('/', [AppointmentController::class, 'store']);
     Route::patch('/{appointment}', [AppointmentController::class, 'update']);
+  });
+  Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::delete('/{appointment}', [AppointmentController::class, 'destroy']);
   });
 });

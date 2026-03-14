@@ -40,6 +40,24 @@ class ScheduleController extends Controller
             'end_time'   => 'required|date|after:start_time'
         ]);
 
+        $start = $validated['start_time'];
+        $end = $validated['end_time'];
+
+        $exists = $request->user()->schedules()
+            ->where(function ($query) use ($start, $end) {
+                $query->where(function ($q) use ($start, $end) {
+                    $q->where('start_time', '<', $end)
+                        ->where('end_time', '>', $start);
+                });
+            })->exists();
+
+        if ($exists) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Это время уже занято другим слотом в вашем расписании'
+            ], 422);
+        }
+
         $schedule = $request->user()->schedules()->create($validated);
 
         return response()->json([
@@ -66,6 +84,24 @@ class ScheduleController extends Controller
             'is_booked'  => 'sometimes|boolean'
         ]);
 
+        if (isset($validated['start_time']) || isset($validated['end_time'])) {
+            $start = $validated['start_time'] ?? $schedule->start_time;
+            $end = $validated['end_time'] ?? $schedule->end_time;
+
+            $exists = $request->user()->schedules()
+                ->where('id', '!=', $schedule->id)
+                ->where(function ($q) use ($start, $end) {
+                    $q->where('start_time', '<', $end)
+                        ->where('end_time', '>', $start);
+                })->exists();
+
+            if ($exists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Это время уже занято другим слотом в вашем расписании'
+                ], 422);
+            }
+        }
         $schedule->update($validated);
 
         return response()->json([
@@ -73,12 +109,11 @@ class ScheduleController extends Controller
             'data' => $schedule
         ]);
     }
-
     public function destroy(Schedule $schedule)
     {
         $this->authorize('delete', $schedule);
 
-        if (!$schedule->where('is_booked', false)) {
+        if ($schedule->is_booked) {
             return response()->json([
                 'success' => true,
                 'message' => 'Нельзя удалить забронированное время'

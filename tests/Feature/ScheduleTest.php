@@ -174,4 +174,46 @@ class ScheduleTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['end_time']);
     }
+
+    public function test_psychologist_cannot_create_overlapping_slots()
+    {
+        $this->actingAs($this->psychologist);
+        $this->createSlot($this->psychologist->id, false, '2027-10-10 10:00:00');
+
+        $response = $this->postJson('/schedules', [
+            'start_time' => '2027-10-10 10:00:00',
+            'end_time'   => '2027-10-10 11:00:00'
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonFragment(['message' => 'Это время уже занято другим слотом в вашем расписании']);
+
+        $responseOverlap = $this->postJson('/schedules', [
+            'start_time' => '2027-10-10 10:30:00',
+            'end_time'   => '2027-10-10 11:30:00'
+        ]);
+
+        $responseOverlap->assertStatus(422);
+        $this->assertDatabaseCount('schedules', 1);
+    }
+
+    public function test_psychologist_cannot_update_slot_to_overlapping_time()
+    {
+        $this->actingAs($this->psychologist);
+
+        $slot1 = $this->createSlot($this->psychologist->id, false, '2027-12-12 10:00:00');
+        $slot2 = $this->createSlot($this->psychologist->id, false, '2027-12-12 12:00:00');
+
+        $response = $this->patchJson("/schedules/{$slot2->id}", [
+            'start_time' => '2027-12-12 10:30:00',
+            'end_time'   => '2027-12-12 11:30:00'
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonFragment(['message' => 'Это время уже занято другим слотом в вашем расписании']);
+
+        $this->patchJson("/schedules/{$slot1->id}", [
+            'is_booked' => true
+        ])->assertStatus(200);
+    }
 }
