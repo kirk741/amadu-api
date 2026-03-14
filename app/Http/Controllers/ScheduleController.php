@@ -77,11 +77,37 @@ class ScheduleController extends Controller
     public function destroy(Schedule $schedule)
     {
         $this->authorize('delete', $schedule);
+
+        if (!$schedule->where('is_booked', false)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Нельзя удалить забронированное время'
+            ], 422);
+        }
+
         $schedule->delete();
 
         return response()->json([
             'success' => true,
             'message' => 'Запись удалена'
+        ]);
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:schedules,id'
+        ]);
+
+        $deletedCount = $request->user()->schedules()
+            ->whereIn('id', $validated['ids'])
+            ->where('is_booked', false)
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Удалено записей: $deletedCount"
         ]);
     }
 

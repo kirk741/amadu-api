@@ -126,23 +126,25 @@ Route::prefix('/personal-diaries')->group(function () {
   });
 });
 
-Route::prefix('/schedule')->group(function () {
-  Route::get('/', [ScheduleController::class, 'index']);
-  Route::get('/{schedule}', [ScheduleController::class, 'show']);
-
+Route::prefix('/schedules')->group(function () {
   Route::middleware(['auth:sanctum', 'psychologist'])->group(function () {
     Route::post('/', [ScheduleController::class, 'store']);
     Route::post('/generate', [ScheduleController::class, 'generate']);
+    Route::delete('/bulk', [ScheduleController::class, 'bulkDestroy']);
     Route::patch('/{schedule}', [ScheduleController::class, 'update']);
     Route::delete('/{schedule}', [ScheduleController::class, 'destroy']);
-  });
+    });
+
+    Route::get('/', [ScheduleController::class, 'index']);
+    Route::get('/{schedule}', [ScheduleController::class, 'show']);
 });
 
 Route::prefix('/appointments')->group(function () {
+  Route::get('/', [AppointmentController::class, 'index']);
+  Route::get('/{appointment}', [AppointmentController::class, 'show']);
+
   Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
-    Route::get('/', [AppointmentController::class, 'index']);
     Route::post('/', [AppointmentController::class, 'store']);
-    Route::get('/{appointment}', [AppointmentController::class, 'show']);
     Route::patch('/{appointment}', [AppointmentController::class, 'update']);
     Route::delete('/{appointment}', [AppointmentController::class, 'destroy']);
   });
