@@ -28,7 +28,8 @@ class User extends Authenticatable
         'birth_date',
         'bio',
         'role_id',
-        'is_blocked'
+        'is_blocked',
+        'settings'
     ];
 
     protected static function boot()

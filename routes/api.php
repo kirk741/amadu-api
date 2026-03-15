@@ -10,6 +10,7 @@ use App\Http\Controllers\FoodDiaryController;
 use App\Http\Controllers\PersonalDiaryController;
 use App\Http\Controllers\PsychologistBookController;
 use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SupportPhoneController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +35,10 @@ Route::prefix('/user')->group(function () {
   });
   Route::get('/', [UserController::class, 'index']);
   Route::get('/{model}', [UserController::class, 'show']);
+});
+
+Route::prefix('/user/settings')->middleware(['auth:sanctum', 'blocked'])->group(function() {
+  Route::patch('/', [SettingsController::class, 'update']);
 });
 
 Route::prefix('/books')->group(function () {
