@@ -77,7 +77,7 @@ class AppointmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $appointment->load('schedule', 'psychologist')
+            'data' => $appointment->load('schedule', 'psychologist', 'client')
         ]);
     }
 
