@@ -151,8 +151,6 @@ Route::prefix('/appointments')->group(function () {
   Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
     Route::post('/', [AppointmentController::class, 'store']);
     Route::patch('/{appointment}', [AppointmentController::class, 'update']);
-  });
-  Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::delete('/{appointment}', [AppointmentController::class, 'destroy']);
   });
 });

@@ -29,6 +29,6 @@ class AppointmentPolicy
 
     public function delete(User $user, Appointment $appointment)
     {
-        return $user->id === $appointment->client_id || $user->id === $appointment->psychologist_id;
+        return $user->role->name === 'admin' || $user->id === $appointment->client_id || $user->id === $appointment->psychologist_id;
     }
 }

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('mime_type')->nullable();
             $table->unsignedBigInteger('size')->nullable();
             $table->string('file_name')->nullable();
+            $table->integer('sort_order')->default(0);
             $table->timestamps();
 
             $table->index(['mediable_type', 'mediable_id']);
