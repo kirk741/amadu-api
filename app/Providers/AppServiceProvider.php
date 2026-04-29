@@ -7,8 +7,10 @@ use App\Models\FeelingsDiary;
 use App\Models\FoodDiary;
 use App\Models\PersonalDiary;
 use App\Policies\BaseDiaryPolicy;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,5 +31,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PersonalDiary::class, BaseDiaryPolicy::class);
         Gate::policy(FoodDiary::class, BaseDiaryPolicy::class);
         Gate::policy(EmotionLog::class, BaseDiaryPolicy::class);
+
+        Sanctum::getAccessTokenFromRequestUsing(function (Request $request) {
+            return $request->query('token') ?? $request->bearerToken();
+        });
     }
 }

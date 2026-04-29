@@ -38,6 +38,8 @@ class EmotionLogController extends Controller
             'created_at' => 'required|date'
         ]);
 
+        $user = $request->user();
+
         $emotionLog = $request->user()->emotionLogs()->create($validated);
 
         return response()->json([

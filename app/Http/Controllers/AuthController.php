@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
@@ -16,9 +17,9 @@ class AuthController extends Controller
                 "password" => "required|string"
             ],
             [
-                "email.required" => "Поле email обязательно для заполнения",
+                "email.required" => "Поле обязательно для заполнения",
                 "email.email" => "Введите корректный email адрес",
-                "password.required" => "Поле пароль обязательно для заполнения",
+                "password.required" => "Поле обязательно для заполнения",
                 "password.string" => "Пароль должен быть строкой"
             ]
         );
@@ -43,7 +44,7 @@ class AuthController extends Controller
             'message' => 'Вход выполнен',
             'data' => [
                 'token' => $token,
-                'user' => $user->load('media')
+                'user' => $user->load('media', 'role')
             ]
         ], 200);
     }
@@ -62,9 +63,17 @@ class AuthController extends Controller
         $validated = $request->validate(
             [
                 'email' => 'required|email|unique:users',
-                'password' => 'required|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!#$%&*)(+\-=]).+$/|confirmed',
-                'name' => 'required|string',
-                'birth_date' => 'nullable|string',
+                'password' => [
+                    'required',
+                    'confirmed',
+                    Password::min(8)
+                        ->letters()
+                        ->mixedCase()
+                        ->numbers()
+                        ->symbols()
+                ],
+                'name' => 'required|string|regex:/^[\pL\s\-]+$/u',
+                'birth_date' => 'nullable|string|before:2020',
                 'bio' => 'nullable|string',
                 'avatar' => 'nullable|image|max:5120'
             ],
@@ -75,12 +84,14 @@ class AuthController extends Controller
                 'password.required' => 'Введите пароль',
                 'password.min' => 'Пароль должен содержать минимум 8 символов',
                 'password.regex' => 'Пароль должен содержать заглавную букву, строчную букву, цифру и специальный символ',
+                'password.confirmed' => 'Пароли не совпадают',
                 'name.required' => 'Введите имя',
                 'name.string' => 'Имя должно быть строкой',
+                'name.regex'    => 'В имени не должно быть цифр =(',
                 'birth_date.string' => 'Дата рождения должна быть строкой',
                 'bio.string' => 'Биография должна быть строкой',
-                'avatar.image' => 'Файл аватара должен быть изображением',
-                'avatar.max' => 'Размер аватара не должен превышать 5MB',
+                'avatar.image' => 'Файл аватарки должен быть изображением',
+                'avatar.max' => 'Размер аватарки не должен превышать 5MB',
             ]
         );
 
@@ -109,7 +120,7 @@ class AuthController extends Controller
             'message' => 'Пользователь зарегистрирован',
             'data' => [
                 'token' => $token,
-                'user' => $user->load('media')
+                'user' => $user->load('media', 'role')
             ]
         ], 201);
     }

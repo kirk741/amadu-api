@@ -6,28 +6,63 @@ use App\Models\FoodDiary;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class FoodDiaryController extends Controller
 {
     use AuthorizesRequests;
 
-    public function index(Request $request)
+    private function getPaginatedCollection(Request $request, $query)
     {
-        $this->authorize("viewAny", FoodDiary::class);
-        $query = $request->user()->foodDiaries()->with('media')->latest();
+        $items = $query->with('media')->latest()->get();
 
-        if($request->filled('search')) {
-            $search = $request->search;
+        if ($request->filled('search')) {
+            $search = mb_strtolower($request->search);
 
-            $query->where(function($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                ->orWhere('content', 'like', "%{$search}%");
+            $items = $items->filter(function ($diary) use ($search) {
+                return mb_strpos(mb_strtolower($diary->title ?? ''), $search) !== false ||
+                    mb_strpos(mb_strtolower($diary->content ?? ''), $search) !== false;
             });
         }
 
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $perPage = 10;
+        $currentItems = $items->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        $paginated = new LengthAwarePaginator(
+            $currentItems,
+            $items->count(),
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return $paginated;
+    }
+
+    public function index(Request $request)
+    {
+        $this->authorize("viewAny", FoodDiary::class);
+
+        $query = $request->user()->foodDiaries();
+        $data = $this->getPaginatedCollection($request, $query);
+
         return response()->json([
             'success' => true,
-            'data' => $query->paginate(10)
+            'data' => $data
+        ], 200);
+    }
+
+    public function trash(Request $request)
+    {
+        $this->authorize("viewAny", FoodDiary::class);
+
+        $query = $request->user()->foodDiaries()->onlyTrashed();
+        $data = $this->getPaginatedCollection($request, $query);
+
+        return response()->json([
+            'success' => true,
+            'data' => $data
         ], 200);
     }
 
@@ -116,26 +151,16 @@ class FoodDiaryController extends Controller
     public function softDelete(FoodDiary $diary)
     {
         $this->authorize('softDelete', $diary);
-
         $diary->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Запись помещена в корзину'
-        ], 200);
+        return response()->json(['success' => true, 'message' => 'Запись перемещена в корзину'], 200);
     }
 
     public function restore(string $id)
     {
         $diary = FoodDiary::withTrashed()->with('media')->findOrFail($id);
         $this->authorize('restore', $diary);
-
         $diary->restore();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Запись восстановлена'
-        ], 200);
+        return response()->json(['success' => true, 'message' => 'Запись восстановлена'], 200);
     }
 
     public function destroy(string $id)
@@ -151,32 +176,25 @@ class FoodDiaryController extends Controller
         }
 
         $diary->forceDelete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Запись удалена'
-        ], 200);
+        return response()->json(['success' => true, 'message' => 'Запись удалена'], 200);
     }
 
     public function getFile(FoodDiary $diary)
     {
         $this->authorize('view', $diary);
-        return Storage::disk('local')->response($diary->media->file_path);
-    }
 
-    public function trash(Request $request)
-    {
-        $this->authorize("viewAny", FoodDiary::class);
+        // media() - это связь, берем первый файл
+        $media = $diary->media()->first();
 
-        $data = $request->user()->foodDiaries()
-            ->onlyTrashed()
-            ->with('media')
-            ->latest()
-            ->paginate(10);
+        if (!$media) {
+            return response()->json(['message' => 'Файл не найден в базе'], 404);
+        }
 
-        return response()->json([
-            'success' => true,
-            'data' => $data
-        ], 200);
+        // Проверяем, существует ли физический файл в storage/app/foodDiaryCovers
+        if (!Storage::disk('local')->exists($media->file_path)) {
+            return response()->json(['message' => 'Файл отсутствует на диске'], 404);
+        }
+
+        return Storage::disk('local')->response($media->file_path);
     }
 }

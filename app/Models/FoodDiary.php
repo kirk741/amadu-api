@@ -19,6 +19,8 @@ class FoodDiary extends Model
     ];
 
     protected $casts = [
+        'title' => 'encrypted',
+        'content' => 'encrypted',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];

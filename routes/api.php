@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AllDiariesController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmotionController;
@@ -21,6 +22,11 @@ Route::prefix('/auth')->group(function () {
   Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 });
 
+Route::prefix('/user/settings')->middleware(['auth:sanctum', 'blocked'])->group(function () {
+  Route::patch('/', [SettingsController::class, 'update']);
+  Route::get('/', [SettingsController::class, 'show']);
+});
+
 Route::prefix('/user')->group(function () {
   Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
     Route::get('/me', [UserController::class, 'me']);
@@ -33,12 +39,8 @@ Route::prefix('/user')->group(function () {
       Route::patch('/set-role', [UserController::class, 'setRole']);
     });
   });
-  Route::get('/', [UserController::class, 'index']);
+  Route::get('/', [UserController::class, 'index']); 
   Route::get('/{model}', [UserController::class, 'show']);
-});
-
-Route::prefix('/user/settings')->middleware(['auth:sanctum', 'blocked'])->group(function() {
-  Route::patch('/', [SettingsController::class, 'update']);
 });
 
 Route::prefix('/books')->group(function () {
@@ -71,32 +73,42 @@ Route::prefix('/events')->group(function () {
   Route::get('/{event}', [EventController::class, 'show']);
 });
 
-Route::prefix('/feelings-diaries')->group(function () {
-  Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
-    Route::get('/trash', [FeelingsDiaryController::class, 'trash']);
-    Route::get('/', [FeelingsDiaryController::class, 'index']);
-    Route::get('/{diary}', [FeelingsDiaryController::class, 'show']);
-    Route::post('/', [FeelingsDiaryController::class, 'store']);
-    Route::patch('/{diary}', [FeelingsDiaryController::class, 'update']);
-    Route::delete('/{diary}/soft', [FeelingsDiaryController::class, 'softDelete']);
-    Route::post('/{id}/restore', [FeelingsDiaryController::class, 'restore']);
-    Route::delete('/{id}/force', [FeelingsDiaryController::class, 'destroy']);
-  });
-});
+ Route::prefix('/feelings-diaries')->middleware(['auth:sanctum'])->group(function () {
+        Route::get('/trash', [FeelingsDiaryController::class, 'trash']);
+        Route::get('/', [FeelingsDiaryController::class, 'index']);
+        Route::post('/', [FeelingsDiaryController::class, 'store']);
+        Route::post('/{id}/restore', [FeelingsDiaryController::class, 'restore']);
+        Route::delete('/{id}/force', [FeelingsDiaryController::class, 'destroy']);
+        Route::get('/{diary}', [FeelingsDiaryController::class, 'show']);
+        Route::patch('/{diary}', [FeelingsDiaryController::class, 'update']);
+        Route::delete('/{diary}', [FeelingsDiaryController::class, 'softDelete']); // Исправлено: без /soft
+    });
 
-Route::prefix('/food-diaries')->group(function () {
-  Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
-    Route::get('/trash', [FoodDiaryController::class, 'trash']);
-    Route::get('/', [FoodDiaryController::class, 'index']);
-    Route::get('/{diary}', [FoodDiaryController::class, 'show']);
-    Route::post('/', [FoodDiaryController::class, 'store']);
-    Route::patch('/{diary}', [FoodDiaryController::class, 'update']);
-    Route::delete('/{diary}', [FoodDiaryController::class, 'softDelete']);
-    Route::post('/{id}/restore', [FoodDiaryController::class, 'restore']);
-    Route::delete('/{id}/force', [FoodDiaryController::class, 'destroy']);
-    Route::get('/{diary}/file', [FoodDiaryController::class, 'getFile']);
-  });
-});
+    // Дневник питания
+    Route::prefix('/food-diaries')->middleware(['auth:sanctum'])->group(function () {
+        Route::get('/trash', [FoodDiaryController::class, 'trash']);
+        Route::get('/', [FoodDiaryController::class, 'index']);
+        Route::post('/', [FoodDiaryController::class, 'store']);
+        Route::post('/{id}/restore', [FoodDiaryController::class, 'restore']);
+        Route::delete('/{id}/force', [FoodDiaryController::class, 'destroy']);
+        Route::get('/{diary}/file', [FoodDiaryController::class, 'getFile']);
+        Route::get('/{diary}', [FoodDiaryController::class, 'show']);
+        Route::patch('/{diary}', [FoodDiaryController::class, 'update']);
+        Route::delete('/{diary}', [FoodDiaryController::class, 'softDelete']);
+    });
+
+    // Личный дневник
+    Route::prefix('/personal-diaries')->middleware(['auth:sanctum'])->group(function () {
+        Route::get('/trash', [PersonalDiaryController::class, 'trash']);
+        Route::get('/', [PersonalDiaryController::class, 'index']);
+        Route::post('/', [PersonalDiaryController::class, 'store']);
+        Route::post('/{id}/restore', [PersonalDiaryController::class, 'restore']);
+        Route::delete('/{id}/force', [PersonalDiaryController::class, 'destroy']);
+        Route::get('/{personalDiary}', [PersonalDiaryController::class, 'show']);
+        Route::patch('/{personalDiary}', [PersonalDiaryController::class, 'update']);
+        Route::delete('/{personalDiary}', [PersonalDiaryController::class, 'softDelete']);
+    });
+
 
 Route::prefix('/emotions')->group(function () {
   Route::middleware(['auth:sanctum', 'admin'])->group(function () {
@@ -115,19 +127,6 @@ Route::prefix('/emotion-logs')->group(function () {
     Route::delete('/{emotionLog}', [EmotionLogController::class, 'destroy']);
     Route::get('/', [EmotionLogController::class, 'index']);
     Route::get('/{emotionLog}', [EmotionLogController::class, 'show']);
-  });
-});
-
-Route::prefix('/personal-diaries')->group(function () {
-  Route::middleware(['auth:sanctum', 'blocked'])->group(function () {
-    Route::get('/trash', [PersonalDiaryController::class, 'trash']);
-    Route::post('/{id}/restore', [PersonalDiaryController::class, 'restore']);
-    Route::get('/', [PersonalDiaryController::class, 'index']);
-    Route::post('/', [PersonalDiaryController::class, 'store']);
-    Route::get('/{personalDiary}', [PersonalDiaryController::class, 'show']);
-    Route::patch('/{personalDiary}', [PersonalDiaryController::class, 'update']);
-    Route::delete('/{personalDiary}', [PersonalDiaryController::class, 'softDelete']);
-    Route::delete('/{id}/force', [PersonalDiaryController::class, 'destroy']);
   });
 });
 
@@ -153,4 +152,9 @@ Route::prefix('/appointments')->group(function () {
     Route::patch('/{appointment}', [AppointmentController::class, 'update']);
     Route::delete('/{appointment}', [AppointmentController::class, 'destroy']);
   });
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+  Route::get('/all-diaries', [AllDiariesController::class, 'index']);
+  Route::get('/all-diaries/trash', [AllDiariesController::class, 'trash']);
 });

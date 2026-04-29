@@ -25,4 +25,20 @@ class SettingsController extends Controller
             'data' => $user->settings
         ]);
     }
+
+    public function show(Request $request)
+    {
+        $user = $request->user();
+
+        $settings = $user->settings ?? [
+            'theme' => 'light-theme',
+            'notifications' => true
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $settings
+        ]);
+    }
+
 }

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -29,9 +30,17 @@ class UserController extends Controller
         $validated = $request->validate(
             [
                 'email' => 'sometimes|email|unique:users,email,' . $user->id,
-                'password' => 'sometimes|string|min:8|regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!#$%&*)(+\-=]).+$/',
-                'name' => 'sometimes|string',
-                'birth_date' => 'nullable|string',
+                'password' => [
+                    'sometimes',
+                    'confirmed',
+                    Password::min(8)
+                        ->letters()
+                        ->mixedCase()
+                        ->numbers()
+                        ->symbols()
+                ],
+                'name' => 'sometimes|string|regex:/^[\pL\s\-]+$/u',
+                'birth_date' => 'nullable|string|before:2020',
                 'bio' => 'nullable|string',
                 'avatar' => 'nullable|image|max:5120'
             ],
@@ -42,10 +51,13 @@ class UserController extends Controller
                 'password.required' => 'Введите пароль',
                 'password.min' => 'Пароль должен содержать минимум 8 символов',
                 'password.regex' => 'Пароль должен содержать заглавную букву, строчную букву, цифру и специальный символ',
+                'password.confirmed' => 'Пароли не совпадают',
                 'name.required' => 'Введите имя',
                 'name.string' => 'Имя должно быть строкой',
+                'name.regex' => 'В имени не должно быть цифр =(',
                 'birth_date.string' => 'Дата рождения должна быть строкой',
-                'bio.string' => 'Биография должна быть строкой',
+                'birth_date.before' => 'Вы должны быть рождены после 2019 года чтобы использовать приложение =(',
+                'bio.string' => 'Описание профиля должно быть строкой',
                 'avatar.image' => 'Файл аватара должен быть изображением',
                 'avatar.max' => 'Размер аватара не должен превышать 5MB',
             ]
@@ -82,34 +94,37 @@ class UserController extends Controller
         $user = $request->user();
         $this->authorize('delete', $user);
 
-        if ($user->media()) {
-            Storage::disk('public')->delete($user->media()->file_path);
-            $user->delete();
+        if ($user->media) {
+            foreach ($user->media as $media) {
+                Storage::disk('public')->delete($media->file_path);
+                $media->delete();
+            }
         }
 
+        $user->delete();
         return response()->json([
             'success' => true,
             'message' => 'Аккаунт удален'
         ], 200);
     }
 
+
     public function index(Request $request)
     {
-        $this->authorize('viewAny', User::class);
-
-        $currentUser = $request->user();
+        $currentUser = auth('sanctum')->user();
         $query = User::query()->with(['media', 'role']);
 
-        if ($currentUser) {
-            $currentUser->loadMissing('role');
+        if (!$currentUser) {
+            $query->whereHas('role', fn($q) => $q->where('name', 'psychologist'));
+        } else {
+            $role = $currentUser->role?->name;
 
-            if ($currentUser->role?->name === 'psychologist') {
+            if ($role === 'admin') {
+            } elseif ($role === 'psychologist') {
                 $query->whereHas('role', fn($q) => $q->where('name', 'client'));
-            } elseif ($currentUser->role?->name === 'client') {
+            } elseif ($role === 'client') {
                 $query->whereHas('role', fn($q) => $q->where('name', 'psychologist'));
             }
-        } else {
-            $query->whereHas('role', fn($q) => $q->where('name', 'psychologist'));
         }
 
         if ($request->filled('search')) {
