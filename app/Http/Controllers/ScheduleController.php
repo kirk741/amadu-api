@@ -22,7 +22,7 @@ class ScheduleController extends Controller
         if ($isPsychologist) {
             $query->where('user_id', $user->id);
         } else {
-            $query->where('is_booked', false);
+            $query->where('is_booked', false)->where('start_time', '>', Carbon::now());
 
             if ($request->has('psychologist_id')) {
                 $query->where('user_id', $request->psychologist_id);
