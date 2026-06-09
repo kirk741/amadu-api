@@ -14,11 +14,13 @@ class ScheduleController extends Controller
 
     public function index(Request $request)
     {
+        $user = auth('sanctum')->user();
         $query = Schedule::query();
-        $isPsychologist = $request->user() && $request->user()->role->name === 'psychologist';
+
+        $isPsychologist = $user && $user->role && $user->role->name === 'psychologist';
 
         if ($isPsychologist) {
-            $query->where('user_id', $request->user()->id);
+            $query->where('user_id', $user->id);
         } else {
             $query->where('is_booked', false);
 
@@ -27,9 +29,18 @@ class ScheduleController extends Controller
             }
         }
 
+        $slots = $query->with(['appointments'])->latest()->get();
+
+        $transformed = $slots->map(function ($slot) use ($user) {
+            if (!$user || ($user->role->name !== 'psychologist' && $user->role->name !== 'admin')) {
+                unset($slot->appointments);
+            }
+            return $slot;
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $query->with('user')->latest()->paginate(10)
+            'data' => $transformed
         ]);
     }
 
@@ -153,19 +164,22 @@ class ScheduleController extends Controller
             'dates.*'       => 'date|after_or_equal:today',
             'start_time'     => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i|after:start_time',
-            'slot_duration' => 'required|integer|min:15|max:120'
+            'slot_duration' => 'required|integer|min:15|max:120',
+            'gap' => 'nullable|integer|min:0|max:60'
         ]);
 
         $slots = [];
         $userId = $request->user()->id;
+        $duration = (int) $validated['slot_duration'];
+        $gap = (int) ($validated['gap'] ?? 0);
 
         foreach ($validated['dates'] as $date) {
             $current = Carbon::parse($date . ' ' . $validated['start_time']);
             $end = Carbon::parse($date . ' ' . $validated['end_time']);
 
-            while ($current->copy()->addMinutes($validated['slot_duration']) <= $end) {
+            while ($current->copy()->addMinutes($duration) <= $end) {
                 $slotStart = $current->copy();
-                $slotEnd = $current->copy()->addMinutes($validated['slot_duration']);
+                $slotEnd = $current->copy()->addMinutes($duration);
 
                 $exists = $request->user()->schedules()
                     ->where('start_time', $slotStart->toDateTimeString())
@@ -182,7 +196,7 @@ class ScheduleController extends Controller
                         'updated_at' => now()->toDateTimeString(),
                     ];
                 }
-                $current->addMinutes($validated['slot_duration']);
+                $current->addMinutes($duration + $gap);
             }
         }
 

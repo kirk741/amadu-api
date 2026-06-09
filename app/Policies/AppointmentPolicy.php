@@ -7,14 +7,14 @@ use App\Models\User;
 
 class AppointmentPolicy
 {
-    public function viewAny(User $user,)
+    public function viewAny(User $user)
     {
         return $user->role && in_array($user->role->name, ['client', 'psychologist']);
     }
 
     public function create(User $user)
     {
-        return $user->role->name === 'client';
+        return $user->role?->name === 'client';
     }
 
     public function view(User $user, Appointment $appointment)

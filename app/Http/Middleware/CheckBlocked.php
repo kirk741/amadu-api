@@ -16,11 +16,9 @@ class CheckBlocked
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->user() && $request->user()->is_blocked) {
-            $request->user()->tokens()->delete();
-
             return response()->json([
                 'success' => false,
-                'message' => 'Ваш аккаунт заблокирован. Сессия завершена.'
+                'message' => 'Ваш аккаунт заблокирован.'
             ], 403);
         }
 

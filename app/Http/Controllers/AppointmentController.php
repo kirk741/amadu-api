@@ -4,10 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Schedule;
+use Carbon\Carbon;
+use Exception;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\App;
-use \Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\DB;
 
 class AppointmentController extends Controller
 {
@@ -16,26 +17,53 @@ class AppointmentController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $relation = match ($user->role->name) {
+        $roleName = $user?->role?->name ?? 'guest';
+
+        $relation = match ($roleName) {
             'psychologist' => 'psychologistAppointments',
-            'client'       => 'clientAppointments',
-            default        => null,
+            'client' => 'clientAppointments',
+            default => null,
         };
 
         if (!$relation || !method_exists($user, $relation)) {
             return response()->json(['success' => false, 'message' => 'Нет доступа'], 403);
         }
 
-        $query = $request->user()->$relation()->with(['schedule', 'psychologist', 'client']);
+        $query = $user->$relation()->with(['schedule', 'psychologist', 'client']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
+
             $query->where(function ($q) use ($search) {
-                $q->where('status', 'like', "%{$search}%")
-                    ->orWhereRelation('schedule', 'start_time', 'like', "%{$search}%")
-                    ->orWhereRelation('schedule', 'end_time', 'like', "%{$search}%")
-                    ->orWhereRelation('psychologist', 'name', 'like', "%{$search}%")
-                    ->orWhereRelation('client', 'name', 'like', "%{$search}%");
+                $q->whereRelation('psychologist', 'name', 'like', "%{$search}%")
+                    ->orWhereRelation('client', 'name', 'like', "%{$search}%")
+                    ->orWhere('status', 'like', "%{$search}%");
+
+                try {
+                    if (str_contains($search, ':')) {
+                        $q->orWhereHas('schedule', function ($sub) use ($search) {
+                            $sub->where('start_time', 'like', "%{$search}%");
+                        });
+                    } else {
+                        $dateSearch = null;
+                        if (is_numeric($search) && (int)$search <= 31) {
+                            $dateSearch = \Carbon\Carbon::now()->day((int)$search);
+                        } else {
+                            $dateSearch = \Carbon\Carbon::parse($search);
+                        }
+
+                        if ($dateSearch) {
+                            $q->orWhereHas('schedule', function ($sub) use ($dateSearch) {
+                                $sub->whereDate('start_time', $dateSearch->toDateString());
+                            });
+                        }
+                    }
+                } catch (\Throwable $e) {
+                }
             });
         }
 
@@ -55,19 +83,20 @@ class AppointmentController extends Controller
 
         $slot = Schedule::findOrFail($validated['schedule_id']);
 
+        $clientId = $request->user()->id;
 
-        $appointment = DB::transaction(function () use ($request, $slot) {
+        $appointment = DB::transaction(function () use ($clientId, $slot) {
             $slot->update(['is_booked' => true]);
             return Appointment::create([
                 'schedule_id'     => $slot->id,
                 'psychologist_id' => $slot->user_id,
-                'client_id'       => $request->user()->id,
+                'client_id'       => $clientId,
             ]);
         });
 
         return response()->json([
             'success' => true,
-            'data' => $appointment->load('schedule', 'psychologist')
+            'data' => $appointment
         ], 201);
     }
 
@@ -90,8 +119,9 @@ class AppointmentController extends Controller
         ]);
 
         $user = $request->user();
+        $roleName = $user?->role?->name ?? 'guest';
 
-        if ($user->role->name === 'client' && $validated['status'] !== 'cancelled') {
+        if ($roleName === 'client' && $validated['status'] !== 'cancelled') {
             return response()->json([
                 'success' => false,
                 'message' => 'Клиент может только отменить запись'
@@ -99,7 +129,7 @@ class AppointmentController extends Controller
         }
 
         if ($validated['status'] === 'cancelled') {
-            DB::transaction(function () use ($request, $appointment, $validated) {
+            DB::transaction(function () use ($appointment, $validated) {
                 $appointment->update($validated);
                 $appointment->schedule->update(['is_booked' => false]);
             });
@@ -123,7 +153,10 @@ class AppointmentController extends Controller
 
         DB::transaction(function () use ($appointment) {
             $appointment->update(['status' => 'cancelled']);
-            $appointment->schedule->update(['is_booked' => false]);
+
+            if ($appointment->schedule) {
+                $appointment->schedule->update(['is_booked' => false]);
+            }
         });
 
         return response()->json([
