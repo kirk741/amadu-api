@@ -22,8 +22,8 @@ class FoodDiaryTest extends TestCase
         parent::setUp();
         Storage::fake('local');
 
-        $adminRole = Role::create(['name' => 'admin']); // Получит ID 1
-        $clientRole = Role::create(['name' => 'client']); // Получит ID 2
+        $adminRole = Role::create(['name' => 'admin']);
+        $clientRole = Role::create(['name' => 'client']);
 
         $this->client = User::create([
             'id' => (string) Str::ulid(),

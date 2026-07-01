@@ -14,7 +14,7 @@ class ScheduleController extends Controller
 
     public function index(Request $request)
     {
-        $user = auth('sanctum')->user();
+        $user = request()->bearerToken() ? auth('sanctum')->user() : null;
         $query = Schedule::query();
 
         $isPsychologist = $user && $user->role && $user->role->name === 'psychologist';
@@ -161,57 +161,63 @@ class ScheduleController extends Controller
     {
         $validated = $request->validate([
             'dates' => 'required|array',
-            'dates.*'       => 'date|after_or_equal:today',
-            'start_time'     => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i|after:start_time',
+            'dates.*' => 'required|date_format:Y-m-d',
+            'start_time' => 'required|string|regex:/^\d{2}:\d{2}$/',
+            'end_time' => 'required|string|regex:/^\d{2}:\d{2}$/|after:start_time',
             'slot_duration' => 'required|integer|min:15|max:120',
-            'gap' => 'nullable|integer|min:0|max:60'
+            'gap' => 'required|integer|min:0|max:60'
         ]);
 
-        $slots = [];
-        $userId = $request->user()->id;
-        $duration = (int) $validated['slot_duration'];
-        $gap = (int) ($validated['gap'] ?? 0);
+        $user = $request->user();
+        $generatedCount = 0;
+        $hasOverlapError = false;
 
         foreach ($validated['dates'] as $date) {
-            $current = Carbon::parse($date . ' ' . $validated['start_time']);
-            $end = Carbon::parse($date . ' ' . $validated['end_time']);
+            $dayStart = \Carbon\Carbon::parse($date . ' ' . $validated['start_time']);
+            $dayEnd = \Carbon\Carbon::parse($date . ' ' . $validated['end_time']);
 
-            while ($current->copy()->addMinutes($duration) <= $end) {
-                $slotStart = $current->copy();
-                $slotEnd = $current->copy()->addMinutes($duration);
+            $currentStart = $dayStart->copy();
 
-                $exists = $request->user()->schedules()
-                    ->where('start_time', $slotStart->toDateTimeString())
-                    ->exists();
+            while ($currentStart->copy()->addMinutes($validated['slot_duration'])->lte($dayEnd)) {
+                $currentEnd = $currentStart->copy()->addMinutes($validated['slot_duration']);
 
-                if (!$exists) {
-                    $slots[] = [
-                        'id'         => (string) Str::ulid(),
-                        'user_id'    => $userId,
-                        'start_time' => $slotStart->toDateTimeString(),
-                        'end_time'   => $slotEnd->toDateTimeString(),
-                        'is_booked'  => false,
-                        'created_at' => now()->toDateTimeString(),
-                        'updated_at' => now()->toDateTimeString(),
-                    ];
+                $startStr = $currentStart->toDateTimeString();
+                $endStr = $currentEnd->toDateTimeString();
+
+                $exists = $user->schedules()
+                    ->where(function ($query) use ($startStr, $endStr) {
+                        $query->where('start_time', '<', $endStr)
+                            ->where('end_time', '>', $startStr);
+                    })->exists();
+
+                if ($exists) {
+                    $hasOverlapError = true;
+                    $currentStart->addMinutes($validated['slot_duration'] + $validated['gap']);
+                    continue;
                 }
-                $current->addMinutes($duration + $gap);
+
+                $user->schedules()->create([
+                    'start_time' => $startStr,
+                    'end_time' => $endStr,
+                    'is_booked' => false
+                ]);
+
+                $generatedCount++;
+
+                $currentStart->addMinutes($validated['slot_duration'] + $validated['gap']);
             }
         }
 
-        if (empty($slots)) {
+        if ($generatedCount === 0 && $hasOverlapError) {
             return response()->json([
-                'message' => 'Слоты уже существуют или интервал слишком мал'
+                'success' => false,
+                'message' => 'Все генерируемые слоты накладываются на существующее расписание'
             ], 422);
         }
 
-        Schedule::insert($slots);
-
         return response()->json([
             'success' => true,
-            'count' => count($slots),
-            'message' => 'Записи добавлены'
+            'message' => "Успешно сгенерировано слотов: {$generatedCount}"
         ], 201);
     }
 }

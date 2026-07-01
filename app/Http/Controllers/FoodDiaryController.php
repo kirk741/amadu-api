@@ -183,14 +183,12 @@ class FoodDiaryController extends Controller
     {
         $this->authorize('view', $diary);
 
-        // media() - это связь, берем первый файл
         $media = $diary->media()->first();
 
         if (!$media) {
             return response()->json(['message' => 'Файл не найден в базе'], 404);
         }
 
-        // Проверяем, существует ли физический файл в storage/app/foodDiaryCovers
         if (!Storage::disk('local')->exists($media->file_path)) {
             return response()->json(['message' => 'Файл отсутствует на диске'], 404);
         }

@@ -21,6 +21,7 @@ class Message extends Model
     ];
 
     protected $casts = [
+        'body' => 'encrypted',
         'read_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'

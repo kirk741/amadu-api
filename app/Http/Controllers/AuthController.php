@@ -44,7 +44,7 @@ class AuthController extends Controller
             'message' => 'Вход выполнен',
             'data' => [
                 'token' => $token,
-                'user' => $user->load('media', 'role')
+                'user' => $user->load('media', 'role')->makeVisible(['settings'])
             ]
         ], 200);
     }

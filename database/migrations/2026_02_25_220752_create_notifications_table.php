@@ -19,8 +19,8 @@ return new class extends Migration
             $table->timestamp('read_at')->nullable();
             $table->timestamps();
 
-            $table->index(['user_id', 'read_at']);        // для получения непрочитанных
-            $table->index(['user_id', 'created_at']);     // для списка уведомлений
+            $table->index(['user_id', 'read_at']);
+            $table->index(['user_id', 'created_at']);
             $table->index('type');
         });
     }

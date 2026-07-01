@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Schedule;
-use Carbon\Carbon;
-use Exception;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +11,15 @@ use Illuminate\Support\Facades\DB;
 class AppointmentController extends Controller
 {
     use AuthorizesRequests;
+
+    private array $relations = [
+        'schedule:id,start_time,end_time',
+        'psychologist:id,name',
+        'client:id,name',
+        'client.media'
+    ];
+
+    private array $hiddenFields = ['created_at', 'updated_at', 'notification_id'];
 
     public function index(Request $request)
     {
@@ -29,7 +36,24 @@ class AppointmentController extends Controller
             return response()->json(['success' => false, 'message' => 'Нет доступа'], 403);
         }
 
-        $query = $user->$relation()->with(['schedule', 'psychologist', 'client']);
+        $query = $user->$relation()->with($this->relations);
+
+        $expiredAppointments = $user->$relation()
+            ->where('appointments.status', 'scheduled')
+            ->whereHas('schedule', function ($q) {
+                $q->where('start_time', '<', now());
+            })
+            ->with('schedule')
+            ->get();
+
+        if ($expiredAppointments->isNotEmpty()) {
+            DB::transaction(function () use ($expiredAppointments) {
+                foreach ($expiredAppointments as $appointment) {
+                    $appointment->update(['status' => 'cancelled']);
+                    $appointment->schedule?->update(['is_booked' => false]);
+                }
+            });
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -41,7 +65,7 @@ class AppointmentController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->whereRelation('psychologist', 'name', 'like', "%{$search}%")
                     ->orWhereRelation('client', 'name', 'like', "%{$search}%")
-                    ->orWhere('status', 'like', "%{$search}%");
+                    ->orWhere('appointments.status', 'like', "%{$search}%");
 
                 try {
                     if (str_contains($search, ':')) {
@@ -67,9 +91,13 @@ class AppointmentController extends Controller
             });
         }
 
+        $paginator = $query->latest()->paginate(10)->through(function ($appointment) {
+            return $appointment->makeHidden($this->hiddenFields);
+        });
+
         return response()->json([
             'success' => true,
-            'data' => $query->latest()->paginate(10)
+            'data' => $paginator
         ]);
     }
 
@@ -82,7 +110,6 @@ class AppointmentController extends Controller
         ]);
 
         $slot = Schedule::findOrFail($validated['schedule_id']);
-
         $clientId = $request->user()->id;
 
         $appointment = DB::transaction(function () use ($clientId, $slot) {
@@ -96,7 +123,7 @@ class AppointmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $appointment
+            'data' => $appointment->makeHidden($this->hiddenFields)
         ], 201);
     }
 
@@ -106,7 +133,7 @@ class AppointmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $appointment->load('schedule', 'psychologist', 'client')
+            'data' => $appointment->makeHidden($this->hiddenFields)->load($this->relations)
         ]);
     }
 
@@ -139,7 +166,7 @@ class AppointmentController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $appointment->load('schedule', 'psychologist', 'client')
+            'data' => $appointment->makeHidden($this->hiddenFields)->load($this->relations)
         ]);
     }
 

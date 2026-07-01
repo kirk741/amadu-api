@@ -19,6 +19,14 @@ class PsychologistBookController extends Controller
             $query->where('psychologist_id', $request->psychologist_id);
         }
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('author', 'like', "%{$search}%");
+            });
+        }
+
         return response()->json([
             'success' => true,
             'data' => $query->latest()->paginate(3)
@@ -80,10 +88,13 @@ class PsychologistBookController extends Controller
         $book->update($validated);
 
         if ($request->hasFile('cover')) {
-            if ($book->media()) {
-                Storage::disk('public')->delete($book->media()->file_path);
-                $book->media()->delete();
+            if ($book->media && $book->media->count() > 0) {
+                foreach ($book->media as $mediaItem) {
+                    Storage::disk('public')->delete($mediaItem->file_path);
+                    $mediaItem->delete();
+                }
             }
+
             $file = $request->file('cover');
             $path = $file->store('book_covers', 'public');
 
@@ -102,10 +113,14 @@ class PsychologistBookController extends Controller
     {
         $this->authorize('delete', $book);
 
-        if($book->media()) {
-            Storage::disk('public')->delete($book->media()->file_path);
-            $book->media()->delete();
+        if ($book->media()->exists()) {
+            $mediaItem = $book->media->first();
+            if ($mediaItem) {
+                Storage::disk('public')->delete($mediaItem->file_path);
+                $mediaItem->delete();
+            }
         }
+
         $book->delete();
 
         return response()->json(['success' => true, 'message' => 'Книга удалена'], 200);

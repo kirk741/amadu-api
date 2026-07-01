@@ -16,9 +16,10 @@ class UserController extends Controller
     {
         $user = $request->user();
         $this->authorize('viewMe', $user);
+
         return response()->json([
             'success' => true,
-            'data' => $user->load('media')
+            'data' => $user->load('media')->makeVisible(['settings'])
         ], 200);
     }
 
@@ -27,11 +28,15 @@ class UserController extends Controller
         $user = $request->user();
         $this->authorize('update', $user);
 
+        if ($request->has('avatar') && is_string($request->avatar)) {
+            $request->request->remove('avatar');
+        }
+
         $validated = $request->validate(
             [
                 'email' => 'sometimes|email|unique:users,email,' . $user->id,
                 'password' => [
-                    'sometimes',
+                    'nullable',
                     'confirmed',
                     Password::min(8)
                         ->letters()
@@ -63,14 +68,30 @@ class UserController extends Controller
             ]
         );
 
-        if ($request->hasFile('avatar')) {
-            if ($user->media()) {
-                foreach ($user->media->where('collection', 'avatar') as $oldMedia) {
-                    Storage::disk('public')->delete($oldMedia->file_path);
+        if (empty($validated['password'])) {
+            unset($validated['password']);
+        } else {
+            $validated['password'] = \Illuminate\Support\Facades\Hash::make($validated['password']);
+        }
+
+        $file = $request->file('avatar');
+
+        if (!$file && $request->has('avatar')) {
+            $file = $request->avatar;
+        }
+
+        if ($file && $file instanceof \Illuminate\Http\UploadedFile) {
+            $avatarMedia = $user->media ? $user->media->where('collection', 'avatar') : collect();
+
+            if ($avatarMedia->isNotEmpty()) {
+                foreach ($avatarMedia as $oldMedia) {
+                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists($oldMedia->file_path)) {
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($oldMedia->file_path);
+                    }
                     $oldMedia->delete();
                 }
             }
-            $file = $request->file('avatar');
+
             $path = $file->store('avatars', 'public');
 
             $user->media()->create([
@@ -81,13 +102,17 @@ class UserController extends Controller
             ]);
         }
 
+        unset($validated['avatar']);
         $user->update($validated);
+
         return response()->json([
             'success' => true,
             'message' => 'Данные изменены',
             'data' => $user->load('media')
         ], 200);
     }
+
+
 
     public function destroy(Request $request)
     {
@@ -96,18 +121,20 @@ class UserController extends Controller
 
         if ($user->media) {
             foreach ($user->media as $media) {
-                Storage::disk('public')->delete($media->file_path);
+                if (Storage::disk('public')->exists($media->file_path)) {
+                    Storage::disk('public')->delete($media->file_path);
+                }
                 $media->delete();
             }
         }
 
         $user->delete();
+
         return response()->json([
             'success' => true,
             'message' => 'Аккаунт удален'
         ], 200);
     }
-
 
     public function index(Request $request)
     {
@@ -118,7 +145,6 @@ class UserController extends Controller
             $query->whereHas('role', fn($q) => $q->where('name', 'psychologist'));
         } else {
             $role = $currentUser->role?->name;
-
             if ($role === 'admin') {
             } elseif ($role === 'psychologist') {
                 $query->whereHas('role', fn($q) => $q->where('name', 'client'));
@@ -176,7 +202,6 @@ class UserController extends Controller
     public function setRole(Request $request, User $model)
     {
         $this->authorize('manage', $model);
-
         $validated = $request->validate([
             'role_id' => 'required|exists:roles,id'
         ]);

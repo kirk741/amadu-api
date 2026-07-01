@@ -3,6 +3,7 @@
 use App\Http\Controllers\AllDiariesController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\EmotionController;
 use App\Http\Controllers\EmotionLogController;
 use App\Http\Controllers\EventController;
@@ -81,7 +82,7 @@ Route::prefix('/feelings-diaries')->middleware(['auth:sanctum'])->group(function
   Route::delete('/{id}/force', [FeelingsDiaryController::class, 'destroy']);
   Route::get('/{diary}', [FeelingsDiaryController::class, 'show']);
   Route::patch('/{diary}', [FeelingsDiaryController::class, 'update']);
-  Route::delete('/{diary}', [FeelingsDiaryController::class, 'softDelete']); // Исправлено: без /soft
+  Route::delete('/{diary}', [FeelingsDiaryController::class, 'softDelete']);
 });
 
 Route::prefix('/food-diaries')->middleware(['auth:sanctum'])->group(function () {
@@ -154,4 +155,14 @@ Route::prefix('/bookings')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
   Route::get('/all-diaries', [AllDiariesController::class, 'index']);
   Route::get('/all-diaries/trash', [AllDiariesController::class, 'trash']);
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+  Route::get('/conversations', [ChatController::class, 'indexConversations']);
+  Route::get('/chats/{receiver_id}', [ChatController::class, 'getOrCreateConversation']);
+  Route::post('/messages', [ChatController::class, 'storeMessage']);
+
+  Route::patch('/messages/{id}', [ChatController::class, 'updateMessage']);
+  Route::delete('/messages/{id}', [ChatController::class, 'destroyMessage']);
+  Route::post('/messages/read-all', [ChatController::class, 'markAsRead']);
 });

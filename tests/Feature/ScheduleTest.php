@@ -129,7 +129,7 @@ class ScheduleTest extends TestCase
         $this->actingAs($this->psychologist);
 
         $response = $this->postJson('/schedules/generate', [
-            'dates' => ['2027-05-10', '2027-05-11'], // Массив дат
+            'dates' => ['2027-05-10', '2027-05-11'],
             'start_time' => '09:00',
             'end_time' => '11:00',
             'slot_duration' => 60
@@ -167,7 +167,7 @@ class ScheduleTest extends TestCase
         $response = $this->postJson('/schedules/generate', [
             'dates' => ['2027-03-10'],
             'start_time' => '15:00',
-            'end_time' => '10:00', // Конец раньше начала
+            'end_time' => '10:00',
             'slot_duration' => 60
         ]);
 
